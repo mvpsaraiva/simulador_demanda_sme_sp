@@ -6,7 +6,13 @@ Description: Simulador de demanda por escolas de educação infantil e ensino fu
 License: MIT + file LICENSE
 Imports: 
     config (>= 0.3.1),
+    DBI,
+    dplyr,
+    ggplot2,
     golem (>= 0.3.5),
+    mapdeck,
+    RSQLite,
+    sf,
     shiny (>= 1.6.0)
 Encoding: UTF-8
 LazyData: true

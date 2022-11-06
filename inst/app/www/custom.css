@@ -1,1 +1,5 @@
- 
+
+/* Modificar o tamanho do mapa! */
+#map {
+  height: calc(100vh - 80px) !important;
+}

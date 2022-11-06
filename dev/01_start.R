@@ -57,6 +57,16 @@ golem::use_favicon() # path = "path/to/ico". Can be an online file.
 golem::use_utils_ui(with_test = TRUE)
 golem::use_utils_server(with_test = TRUE)
 
+## Add packages
+usethis::use_package("dplyr")
+usethis::use_package("ggplot2")
+usethis::use_package("sf")
+usethis::use_package("DBI")
+usethis::use_package("RSQLite")
+usethis::use_package("mapview")
+
+
+
 # You're now set! ----
 
 # go to dev/02_dev.R

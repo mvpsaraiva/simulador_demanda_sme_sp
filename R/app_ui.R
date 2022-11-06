@@ -5,24 +5,35 @@
 #' @import shiny
 #' @noRd
 app_ui <- function(request) {
-  tagList(
-    # Leave this function for adding external resources
+  tagList(# Leave this function for adding external resources
     golem_add_external_resources(),
     # Your application UI logic
-
-    fluidPage(
-      h1("demanda.sme.sp"),
+    navbarPage(
+      title = "demanda.sme.sp",
       tabPanel(
-        title = "Visualização",
-        mod_visualizacao_ui("visualizacao_1")
+        title = "Estudantes",
+        mod_estudantes_ui("estudantes_1")
+      ),
+      tabPanel(
+        title = "Matrículas",
+        mod_matriculas_ui("matriculas_1")
+        ),
+      tabPanel(
+        title = "Déficit",
+        mod_deficit_ui("deficit_1")
       ),
       tabPanel(
         title = "Simulação",
         mod_simulacao_ui("simulacao_1")
       )
-    )
-  )
+      # tabPanel(
+      #   title = "Resultados",
+      #   mod_simulacao_ui("simulacao_1")
+      # )
+    ))
 }
+
+
 
 #' Add external Resources to the Application
 #'

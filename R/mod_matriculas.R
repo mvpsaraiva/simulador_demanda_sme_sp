@@ -1,4 +1,4 @@
-#' simulacao UI Function
+#' matriculas UI Function
 #'
 #' @description A shiny Module.
 #'
@@ -7,20 +7,15 @@
 #' @noRd
 #'
 #' @importFrom shiny NS tagList
-mod_simulacao_ui <- function(id){
+mod_matriculas_ui <- function(id){
   ns <- NS(id)
   tagList(
     fluidRow(
-      # Maps
-      column(
-        width = 4,
-        mapdeck::mapdeckOutput(ns("map_before"), height = "750")
-      ),
       # Filters
       column(
-        width = 4,
+        width = 3,
         wellPanel(
-          selectInput(inputId = ns("serie"),
+          radioButtons(inputId = ns("serie"),
                        label = "Faixa Etária / Série",
                        choices = list("Creche (0 a  3 anos de idade)" = "creche",
                                       "Pré-Escola (4 a  5 anos de idade)" = "pre",
@@ -33,49 +28,31 @@ mod_simulacao_ui <- function(id){
                                      "Setores" = "setores_sme",
                                      "Distritos" = "distritos"),
                       selected = "setores_sme"),
-          selectInput(inputId = ns("tempo_viagem"),
-                       label = "Tempo de Deslocamento",
-                       choices = list("15 minutos" = 15,
-                                      "30 minutos" = 30),
-                       selected = 15),
           checkboxInput(inputId = ns("mostrar_escolas"), label = "Mostrar Escolas", value = FALSE),
-          selectInput(inputId = ns("previsao"),
-                      label = "Previsão",
-                      choices = list(2035, 2045),
-                      selected = 2035),
-          hr(),
-
-          hr(),
-          actionButton(inputId = ns("btn_recalcular"),
-                       label = "Recalcular")
-
         )
+      ),
+      # Maps
+      column(
+        width = 4,
+        mapdeck::mapdeckOutput(ns("map_current"), height = "750")
       ),
       column(
         width = 4,
-        mapdeck::mapdeckOutput(ns("map_after"), height = "750")
+        dataTableOutput(ns("table"))
       )
     )
   )
 }
 
-#' simulacao Server Functions
+#' matriculas Server Functions
 #'
 #' @noRd
-mod_simulacao_server <- function(id, db_con){
+mod_matriculas_server <- function(id, db_con){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
 
     unidade_espacial <- reactive({
       input$unidade_espacial
-    })
-
-    tempo_viagem <- reactive({
-      input$tempo_viagem
-    })
-
-    ano_previsao <- reactive({
-      input$previsao
     })
 
     mostrar_escolas <- reactive({
@@ -95,7 +72,7 @@ mod_simulacao_server <- function(id, db_con){
         if (spatial_unit == "setores_sme") p2 <- "setor"
         if (spatial_unit == "distritos") p2 <- "distrito"
 
-        table_name = paste0("deficit_bfca_", p2)
+        table_name = paste0("matriculas_por_", p2)
 
         return(table_name)
       }
@@ -103,7 +80,11 @@ mod_simulacao_server <- function(id, db_con){
       table <- get_table_name(input$unidade_espacial)
 
       table_data <- DBI::dbReadTable(db_con, table) |>
-        dplyr::filter(serie == input$serie, cutoff == tempo_viagem(), ano %in% c(2020, 2035, 2045))
+        dplyr::filter(serie == input$serie)
+
+      if (!("mat_publica" %in% names(table_data))) {
+        table_data <- dplyr::mutate(table_data, mat_publica = mat_municipal + mat_estadual)
+      }
 
       return(table_data)
     })
@@ -115,17 +96,16 @@ mod_simulacao_server <- function(id, db_con){
       if (input$unidade_espacial == "setores_sme") col <- "cd_setor"
       if (input$unidade_espacial == "distritos") col <- "cd_distrito"
 
-      data_sf <- dplyr::left_join(spatial_sf(), table_df(), by = col)
+      data_sf <- dplyr::inner_join(spatial_sf(), table_df(), by = col)
 
       # sf::st_write(data_sf, "joined.gpkg")
       return(data_sf)
     })
 
-    # Atualização do mapa -----------------------------------------------------
 
     observe({
 
-      col <- "deficit"
+      col <- "mat_publica"
       id_col <- ""
       if (unidade_espacial() == "hexgrid") {
         id_col = "id_hex"
@@ -137,14 +117,7 @@ mod_simulacao_server <- function(id, db_con){
         id_col = "cd_distrito"
       }
 
-      # data_filtered <- dplyr::filter(data_joined_sf(), ano %in% c(2020, ano_previsao())) |>
-      #   dplyr::group_by(!!as.name(id_col)) |>
-      #   dplyr::arrange(ano) |>
-      #   dplyr::mutate(val = !!as.name(col)) |>
-      #   dplyr::mutate(diff = dplyr::last(val) - dplyr::first(val)) |>
-      #   dplyr::select(-val)
-
-      update_map <- function(data, a, id = "_current") {
+      update_map <- function(data, id = "_current") {
 
         m_id <- paste0("map", id)
         l_id <- paste0("geo", id)
@@ -152,22 +125,6 @@ mod_simulacao_server <- function(id, db_con){
 
         data_l <- sf::st_set_geometry(data, NULL)
         data_l <- data_l[col]
-        # data_l <- na.omit(data_l)
-
-
-        # ADD THE COULOURS TO THE DATA
-        #         fill_color <- colourvalues::colour_values(
-        # =          x = c(data_l[col], max(data_l[col])),
-        #           alpha = 200,
-        #           palette = "inferno"
-        #         )
-        # print(fill_color[-length(fill_color)])
-        # print(head(tempo_filtrado_sf()))
-        # print(c(tempo_filtrado_sf()$valor, scale_limits()$max))
-
-        # data <- data |>
-        #   dplyr::mutate(fill = fill_color[1])
-        # dplyr::mutate(fill = fill_color[-length(fill_color)])
 
 
         # create legend
@@ -184,21 +141,19 @@ mod_simulacao_server <- function(id, db_con){
           , colours = l$summary_colours
           , colour_type = "fill"
           , variable_type = "gradient"
-          , title = "Estudantes de\nEscola Pública"
+          , title = "Matrículas em\nEscolas Públicas"
         )
         js_legend <- mapdeck::mapdeck_legend(legend)
 
         # put colors into dataframe
         # data$fill <- l$colours[1]
-        data_ano <- dplyr::filter(data, ano == a)
-
 
         # f_col = col
         # if (comparacao() == "diferenca" & id == "_future") f_col = "diff"
 
         mapdeck::mapdeck_update(map_id = ns(m_id)) |>
           mapdeck::clear_polygon(layer_id = l_id) |>
-          mapdeck::add_polygon(data = data_ano,
+          mapdeck::add_polygon(data = data,
                                fill_opacity = 200,
                                fill_colour = col,
                                stroke_width = 2,
@@ -207,7 +162,7 @@ mod_simulacao_server <- function(id, db_con){
                                auto_highlight = TRUE,
                                tooltip = "popup",
                                legend = TRUE,
-                               legend_options = list(title = "Déficit / Superávit",
+                               legend_options = list(title = "Matrículas em\nEscolas Públicas",
                                                      digits = 0)
                                # legend = js_legend
           )
@@ -235,8 +190,7 @@ mod_simulacao_server <- function(id, db_con){
         }
       }
 
-      update_map(data_joined_sf(), 2020, "_before")
-      update_map(data_joined_sf(), ano_previsao(), "_after")
+      update_map(data_joined_sf(), "_current")
 
       # mapdeck::mapdeck_update(map_id = ns("map_current")) |>
       #   mapdeck::clear_polygon(layer_id = "geo_current") |>
@@ -246,34 +200,35 @@ mod_simulacao_server <- function(id, db_con){
       #                        stroke_width = 2
       #   )
     })
-# Mapas Base --------------------------------------------------------------
 
-    output$map_before <- mapdeck::renderMapdeck({
+    output$map_current <- mapdeck::renderMapdeck({
       muni_sf <- read_sf_from_db(db_con, "municipio")
 
       mapdeck::mapdeck(location = c(-46.63306176720343, -23.548164364465265), zoom = 9) |>
         # mapdeck::mapdeck_view(location = c(-46.63306176720343, -23.548164364465265), zoom = 3,
         #              duration = 4000, transition = "fly") |>
         mapdeck::add_polygon(data = muni_sf,
-                             layer_id = "geo_before")
+                             layer_id = "geo_current")
     })
 
-    output$map_after <- mapdeck::renderMapdeck({
-      muni_sf <- read_sf_from_db(db_con, "municipio")
+    output$table <- renderDataTable({
 
-      mapdeck::mapdeck(location = c(-46.63306176720343, -23.548164364465265), zoom = 9) |>
-        # mapdeck::mapdeck_view(location = c(-46.63306176720343, -23.548164364465265), zoom = 3,
-        #              duration = 4000, transition = "fly") |>
-        mapdeck::add_polygon(data = muni_sf,
-                             layer_id = "geo_after")
-    })
+      if (input$unidade_espacial == "hexgrid") df <- dplyr::select(table_df(), id_hex, mat_publica, mat_privada)
+      if (input$unidade_espacial == "setores_sme") df <- dplyr::select(table_df(), cd_setor, mat_publica, mat_privada)
+      if (input$unidade_espacial == "distritos") df <- dplyr::select(table_df(), cd_distrito, mat_publica, mat_privada)
 
+      return(df)
+
+    },
+    options = list(
+      pageLength = 15
+    ))
 
   })
 }
 
 ## To be copied in the UI
-# mod_simulacao_ui("simulacao_1")
+# mod_matriculas_ui("matriculas_1")
 
 ## To be copied in the server
-# mod_simulacao_server("simulacao_1")
+# mod_matriculas_server("matriculas_1")
