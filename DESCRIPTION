@@ -15,6 +15,7 @@ Imports:
     dplyr,
     golem (>= 0.3.5),
     mapdeck,
+    pkgload,
     RSQLite,
     sf,
     shiny (>= 1.6.0)
