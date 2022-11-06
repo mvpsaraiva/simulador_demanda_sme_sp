@@ -9,6 +9,11 @@ app_server <- function(input, output, session) {
   ## check if database exists, and download it if not
   db_file <- golem::get_golem_options("db_path")
   if (!file.exists(db_file)) {
+
+    if (!dir.exists("data")) {
+      dir.create("data")
+    }
+
     asset_file_name = basename(db_file)
     piggyback::pb_download(file = asset_file_name,
                            repo = "mvpsaraiva/simulador_demanda_sme_sp",
