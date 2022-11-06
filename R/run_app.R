@@ -12,7 +12,7 @@ run_app <- function(
   options = list(),
   enableBookmarking = NULL,
   uiPattern = "/",
-  db_path = "data/demanda_sme_v2.db",
+  db_path = "data/demanda_sme_v4.db",
   ...
 ) {
   with_golem_options(

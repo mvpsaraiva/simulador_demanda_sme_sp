@@ -10,50 +10,41 @@
 mod_simulacao_ui <- function(id){
   ns <- NS(id)
   tagList(
-    fluidRow(
-      # Maps
-      column(
-        width = 4,
-        mapdeck::mapdeckOutput(ns("map_before"), height = "750")
+
+    gridlayout::grid_container(
+      layout = c(
+        "    1fr   400px   ",
+        "1fr data  edit    "
       ),
-      # Filters
-      column(
-        width = 4,
-        wellPanel(
-          selectInput(inputId = ns("serie"),
-                       label = "Faixa Etária / Série",
-                       choices = list("Creche (0 a  3 anos de idade)" = "creche",
-                                      "Pré-Escola (4 a  5 anos de idade)" = "pre",
-                                      "Fundamental I (6 a 10 anos de idade)" = "anos_iniciais",
-                                      "Fundamental II (11 a 14 anos de idade)" = "anos_finais"),
-                       selected = "creche"),
-          selectInput(inputId = ns("unidade_espacial"),
-                      label = "Divisão Espacial",
-                      choices = list("Hexágonos" = "hexgrid",
-                                     "Setores" = "setores_sme",
-                                     "Distritos" = "distritos"),
-                      selected = "setores_sme"),
-          selectInput(inputId = ns("tempo_viagem"),
-                       label = "Tempo de Deslocamento",
-                       choices = list("15 minutos" = 15,
-                                      "30 minutos" = 30),
-                       selected = 15),
-          checkboxInput(inputId = ns("mostrar_escolas"), label = "Mostrar Escolas", value = FALSE),
-          selectInput(inputId = ns("previsao"),
-                      label = "Previsão",
-                      choices = list(2035, 2045),
-                      selected = 2035),
-          hr(),
-
-          hr(),
-          actionButton(inputId = ns("btn_recalcular"),
-                       label = "Recalcular")
-
+      gridlayout::grid_card
+      (
+        "data",
+        tabsetPanel(
+          tabPanel(title = "Escolas", DT::dataTableOutput(ns("tabela_escolas"))),
+          tabPanel(title = "Modificações", DT::dataTableOutput(ns("tabela_modificacoes")))
         )
       ),
-      column(
-        width = 4,
-        mapdeck::mapdeckOutput(ns("map_after"), height = "750")
+      gridlayout::grid_nested
+      (
+        "edit",
+        layout = c(
+          "280px agregado ",
+          "1fr   escola   "
+        ),
+        gridlayout::grid_card(
+          "agregado",
+          tabsetPanel(
+            tabPanel(title = "Déficit por Distrito", DT::dataTableOutput(ns("tabela_deficit_distrito"))),
+            tabPanel(title = "Déficit por Setor", DT::dataTableOutput(ns("tabela_deficit_setor")))
+          )
+        ),
+        gridlayout::grid_card(
+          "escola",
+          DT::dataTableOutput(ns("dados_escola")),
+
+          actionButton(inputId = ns("btn_salvar"),
+                       label = "Salvar")
+          )
       )
     )
   )
@@ -66,208 +57,192 @@ mod_simulacao_server <- function(id, db_con){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
 
-    unidade_espacial <- reactive({
-      input$unidade_espacial
+    # Dados pré-carregados - deficit por setor e distrito ------------------------------------
+
+    deficit_vagas <- reactiveValues(
+      distritos = DBI::dbReadTable(db_con, "deficit_bfca_distrito"),
+      setores = DBI::dbReadTable(db_con, "deficit_bfca_setor")
+    )
+
+    deficit_distrito_selecionado_df <- reactive({
+      print(input$tabela_escolas_rows_selected)
+      if (length(input$tabela_escolas_rows_selected)) {
+        escola_selecionada <- table_df()[input$tabela_escolas_rows_selected, ]
+
+        dplyr::filter(deficit_vagas$distritos, cd_distrito == escola_selecionada$cd_distrito[[1]])
+      } else {
+        return (NULL)
+      }
     })
 
-    tempo_viagem <- reactive({
-      input$tempo_viagem
-    })
-
-    ano_previsao <- reactive({
-      input$previsao
-    })
-
-    mostrar_escolas <- reactive({
-      input$mostrar_escolas
-    })
-
-    spatial_sf <- reactive({
-      read_sf_from_db(db_con, input$unidade_espacial)
-    })
+    # Tabela de escolas -------------------------------------------------------
+    escolas <- reactiveValues(
+      data = DBI::dbReadTable(db_con, "escolas")
+    )
 
     table_df <- reactive({
 
-      get_table_name <- function(spatial_unit) {
-        # second part of table name
-        p2 <- ""
-        if (spatial_unit == "hexgrid") p2 <- "hex"
-        if (spatial_unit == "setores_sme") p2 <- "setor"
-        if (spatial_unit == "distritos") p2 <- "distrito"
+      escolas_df <- escolas$data |> dplyr::filter(tp_categoria != "privada")
+      setores_df <- DBI::dbReadTable(db_con, "setores_sme") |> dplyr::select(-geometry)
+      distritos_df <- DBI::dbReadTable(db_con, "distritos") |> dplyr::select(-geometry)
 
-        table_name = paste0("deficit_bfca_", p2)
+      escolas_joined_df <- dplyr::left_join(escolas_df, setores_df, by = c("co_setor" = "cd_setor", "cd_distrito")) |>
+        dplyr::left_join(distritos_df, by = c("cd_distrito", "cd_muni", "nr_distrito", "cd_dre"))
 
-        return(table_name)
-      }
+      escolas_clean_df <- dplyr::select(escolas_joined_df, cd_dre, nr_distrito, label_distrito, co_setor,
+                    co_entidade, no_entidade, tp_categoria,
+                    qt_mat_inf_cre, qt_mat_inf_pre, qt_mat_fund_ai, qt_mat_fund_af) |>
+        dplyr::mutate(cd_dre = stringr::str_remove(cd_dre, "DRE - ")) |>
+        dplyr::arrange(co_setor, no_entidade)
 
-      table <- get_table_name(input$unidade_espacial)
-
-      table_data <- DBI::dbReadTable(db_con, table) |>
-        dplyr::filter(serie == input$serie, cutoff == tempo_viagem(), ano %in% c(2020, 2035, 2045))
-
-      return(table_data)
+      return(escolas_clean_df)
     })
 
-    data_joined_sf <- reactive({
-
-      col <- ""
-      if (input$unidade_espacial == "hexgrid") col <- "id_hex"
-      if (input$unidade_espacial == "setores_sme") col <- "cd_setor"
-      if (input$unidade_espacial == "distritos") col <- "cd_distrito"
-
-      data_sf <- dplyr::left_join(spatial_sf(), table_df(), by = col)
-
-      # sf::st_write(data_sf, "joined.gpkg")
-      return(data_sf)
-    })
-
-    # Atualização do mapa -----------------------------------------------------
-
-    observe({
-
-      col <- "deficit"
-      id_col <- ""
-      if (unidade_espacial() == "hexgrid") {
-        id_col = "id_hex"
-      }
-      if (unidade_espacial() == "setores_sme") {
-        id_col = "cd_setor"
-      }
-      if (unidade_espacial() == "distritos") {
-        id_col = "cd_distrito"
-      }
-
-      # data_filtered <- dplyr::filter(data_joined_sf(), ano %in% c(2020, ano_previsao())) |>
-      #   dplyr::group_by(!!as.name(id_col)) |>
-      #   dplyr::arrange(ano) |>
-      #   dplyr::mutate(val = !!as.name(col)) |>
-      #   dplyr::mutate(diff = dplyr::last(val) - dplyr::first(val)) |>
-      #   dplyr::select(-val)
-
-      update_map <- function(data, a, id = "_current") {
-
-        m_id <- paste0("map", id)
-        l_id <- paste0("geo", id)
-
-
-        data_l <- sf::st_set_geometry(data, NULL)
-        data_l <- data_l[col]
-        # data_l <- na.omit(data_l)
-
-
-        # ADD THE COULOURS TO THE DATA
-        #         fill_color <- colourvalues::colour_values(
-        # =          x = c(data_l[col], max(data_l[col])),
-        #           alpha = 200,
-        #           palette = "inferno"
-        #         )
-        # print(fill_color[-length(fill_color)])
-        # print(head(tempo_filtrado_sf()))
-        # print(c(tempo_filtrado_sf()$valor, scale_limits()$max))
-
-        # data <- data |>
-        #   dplyr::mutate(fill = fill_color[1])
-        # dplyr::mutate(fill = fill_color[-length(fill_color)])
-
-
-        # create legend
-        l <- colourvalues::colour_values(x = c(data_l[col],
-                                               max(data_l[col], na.rm = TRUE)),
-                                         alpha = 200,
-                                         n_summaries = 6,
-                                         palette = "inferno")
-
-        legend_converter <- function (x) as.integer(x)
-
-        legend <- mapdeck::legend_element(
-          variables = legend_converter(l$summary_values)
-          , colours = l$summary_colours
-          , colour_type = "fill"
-          , variable_type = "gradient"
-          , title = "Estudantes de\nEscola Pública"
-        )
-        js_legend <- mapdeck::mapdeck_legend(legend)
-
-        # put colors into dataframe
-        # data$fill <- l$colours[1]
-        data_ano <- dplyr::filter(data, ano == a)
-
-
-        # f_col = col
-        # if (comparacao() == "diferenca" & id == "_future") f_col = "diff"
-
-        mapdeck::mapdeck_update(map_id = ns(m_id)) |>
-          mapdeck::clear_polygon(layer_id = l_id) |>
-          mapdeck::add_polygon(data = data_ano,
-                               fill_opacity = 200,
-                               fill_colour = col,
-                               stroke_width = 2,
-                               update_view = FALSE,
-                               focus_layer = FALSE,
-                               auto_highlight = TRUE,
-                               tooltip = "popup",
-                               legend = TRUE,
-                               legend_options = list(title = "Déficit / Superávit",
-                                                     digits = 0)
-                               # legend = js_legend
-          )
-
-        # escolas
-        if (mostrar_escolas() == TRUE) {
-
-          escolas_df <- DBI::dbReadTable(db_con, "escolas")
-
-          mapdeck::mapdeck_update(map_id = ns(m_id)) |>
-            mapdeck::add_pointcloud(data = escolas_df,
-                                    lon = "lon", lat = "lat",
-                                    update_view = FALSE,
-                                    layer_id = "escolas",
-                                    fill_colour = "tp_categoria",
-                                    legend = TRUE,
-                                    fill_opacity = 170,
-                                    # auto_highlight = TRUE
-                                    # id = "brasil",
-                                    tooltip = "no_entidade"
+    output$tabela_escolas <- DT::renderDataTable(
+      {
+        # container com formatação extra para a tabela
+        sketch = htmltools::withTags(table(
+          class = 'display',
+          thead(
+            tr(
+              th(colspan = 4, 'Localização'),
+              th(colspan = 3, 'Escola'),
+              th(colspan = 4, 'Matrículas')
+            ),
+            tr(
+              th("DRE"),
+              th(colspan = 2, "Distrito"),
+              th("Setor"),
+              th("Código (MEC)"),
+              th("Nome"),
+              th("Dependência"),
+              th("Creche"),
+              th("Pré-Escola"),
+              th("Fundamental I"),
+              th("Fundamental II")
             )
-        } else {
-          mapdeck::mapdeck_update(map_id = ns(m_id)) |>
-            mapdeck::clear_pointcloud(layer_id = "escolas")
-        }
+          )
+        ))
+
+        DT::datatable(table_df(),
+                      container = sketch,
+                      rownames = FALSE,
+                      selection = "single",
+                      extensions = c("Responsive", "Scroller"),
+                      list(lengthMenu = c(5, 10, 15, 30, 50), pageLength = 15))
+
       }
+    )
 
-      update_map(data_joined_sf(), 2020, "_before")
-      update_map(data_joined_sf(), ano_previsao(), "_after")
+    # Escola selecionada na tabela ------------------------------
+    escola_atual <- reactive({
+      if (length(input$tabela_escolas_rows_selected > 0)) {
+        escola_selecionada <- table_df()[input$tabela_escolas_rows_selected[1], ]
 
-      # mapdeck::mapdeck_update(map_id = ns("map_current")) |>
-      #   mapdeck::clear_polygon(layer_id = "geo_current") |>
-      #   mapdeck::add_polygon(data = data_joined_sf(),
-      #                        fill_opacity = 200,
-      #                        fill_colour = col,
-      #                        stroke_width = 2
-      #   )
-    })
-# Mapas Base --------------------------------------------------------------
+        escola_atual_df <- dplyr::filter(escolas$data,
+                                         co_entidade == escola_selecionada$co_entidade[1])
 
-    output$map_before <- mapdeck::renderMapdeck({
-      muni_sf <- read_sf_from_db(db_con, "municipio")
-
-      mapdeck::mapdeck(location = c(-46.63306176720343, -23.548164364465265), zoom = 9) |>
-        # mapdeck::mapdeck_view(location = c(-46.63306176720343, -23.548164364465265), zoom = 3,
-        #              duration = 4000, transition = "fly") |>
-        mapdeck::add_polygon(data = muni_sf,
-                             layer_id = "geo_before")
+        return(escola_atual_df)
+      } else {
+        return(dplyr::filter(escolas$data, co_entidade == -1))
+      }
     })
 
-    output$map_after <- mapdeck::renderMapdeck({
-      muni_sf <- read_sf_from_db(db_con, "municipio")
+    # Tabelas com déficit por setor e distrito da escola selecionada ----------
+    output$tabela_deficit_distrito <- DT::renderDataTable({
+      if (length(input$tabela_escolas_rows_selected > 0)) {
+        escola_selecionada <- table_df()[input$tabela_escolas_rows_selected[1], ]
 
-      mapdeck::mapdeck(location = c(-46.63306176720343, -23.548164364465265), zoom = 9) |>
-        # mapdeck::mapdeck_view(location = c(-46.63306176720343, -23.548164364465265), zoom = 3,
-        #              duration = 4000, transition = "fly") |>
-        mapdeck::add_polygon(data = muni_sf,
-                             layer_id = "geo_after")
+        deficit_df <-
+          dplyr::filter(deficit_vagas$distritos,
+                        nr_distrito == escola_selecionada$nr_distrito[1],
+                        cutoff == 15)
+
+        caption_text = sprintf("Distrito %02d - %s", deficit_df$nr_distrito[1], deficit_df$nm_distrito[1])
+
+        deficit_wide <-
+          dplyr::select(deficit_df, ano, serie, deficit) |>
+          tidyr::pivot_wider(names_from = ano, values_from = deficit)
+
+        return(DT::datatable(deficit_wide,
+                             rownames = FALSE,
+                             selection = "none",
+                             filter = "none",
+                             caption = caption_text,
+                             options = list(dom = 't')))
+
+      } else {
+        DT::datatable(data = NULL)
+      }
     })
 
+    output$tabela_deficit_setor <- DT::renderDataTable({
+      if (length(input$tabela_escolas_rows_selected > 0)) {
+        escola_selecionada <- table_df()[input$tabela_escolas_rows_selected[1], ]
+
+        deficit_df <-
+          dplyr::filter(deficit_vagas$setores,
+                        cd_setor == escola_selecionada$co_setor[1],
+                        cutoff == 15)
+
+        deficit_wide <-
+          dplyr::select(deficit_df, ano, serie, deficit) |>
+          tidyr::pivot_wider(names_from = ano, values_from = deficit)
+
+        caption_text = sprintf("Setor %s - %s", deficit_df$cd_setor[1], deficit_df$nm_distrito[1])
+
+        return(DT::datatable(deficit_wide,
+                             rownames = FALSE,
+                             selection = "none",
+                             filter = "none",
+                             caption = caption_text,
+                             options = list(dom = 't')))
+
+      } else {
+        DT::datatable(data = NULL)
+      }
+    })
+
+
+    # Características da escola selecionada -----------------------------------
+    output$dados_escola <-  DT::renderDataTable({
+      if (nrow(escola_atual()) == 1) {
+        caption_text = sprintf("Escola %d - %s", escola_atual()$co_entidade[1], escola_atual()$no_entidade[1])
+
+        dados_escola <- escola_atual() |>
+          dplyr::mutate(endereco = paste0(ds_complemento, " ", ds_endereco, ", ", nu_endereco)) |>
+          dplyr::select(#co_entidade, no_entidade,
+                        qt_area_edificada, qt_area_livre, qt_area_ocupada, qt_area_total,
+                        qt_pavimento, qt_salas, qt_salas_utilizadas_dentro) |>
+          # dplyr::mutate(dplyr::across(.cols = dplyr::everything(), .fns = as.character)) |>
+          tidyr::pivot_longer(cols = dplyr::everything(), names_to = "info", values_to = "valor")
+
+
+        dados_escola$info <- factor(dados_escola$info,
+                                    levels = c("qt_area_edificada", "qt_area_livre",
+                                               "qt_area_ocupada", "qt_area_total",
+                                               "qt_pavimento", "qt_salas",
+                                               "qt_salas_utilizadas_dentro"),
+                                    labels = c("Área edificada", "Área livre no terreno",
+                                               "Área ocupada no terreno", "Área total do terreno",
+                                               "Número de pavimentos", "Número de salas",
+                                               "Número de salas utilizadas"))
+
+
+        return(DT::datatable(dados_escola,
+                             rownames = FALSE,
+                             colnames = "",
+                             selection = "none",
+                             filter = "none",
+                             caption = caption_text,
+                             options = list(dom = 't')))
+        # qt_tur_inf_cre, qt_tur_inf_pre, qt_tur_fund_ai, qt_tur_fund_af,
+        # qt_mat_inf_cre, qt_mat_inf_pre, qt_mat_fund_ai, qt_mat_fund_af,
+
+      } else {
+        DT::datatable(data = NULL)
+      }
+    })
 
   })
 }
