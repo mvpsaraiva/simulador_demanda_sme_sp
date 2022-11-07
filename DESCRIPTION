@@ -9,6 +9,7 @@ Description: Simulador de demanda por escolas de educação infantil e
     Interamericano de Desenvolvimento (BID).
 License: MIT + file LICENSE
 Imports: 
+    accessibility,
     colourvalues,
     config (>= 0.3.1),
     DBI,
@@ -17,13 +18,16 @@ Imports:
     golem (>= 0.3.5),
     gridlayout,
     htmltools,
+    janitor,
     mapdeck,
     piggyback,
+    purrr,
     RSQLite,
     sf,
     shiny (>= 1.6.0),
     stringr,
-    tidyr
+    tidyr,
+    uuid
 Suggests: 
     spelling,
     testthat (>= 3.0.0)

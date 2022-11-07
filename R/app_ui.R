@@ -10,30 +10,26 @@ app_ui <- function(request) {
     # Your application UI logic
     navbarPage(
       title = "demanda.sme.sp",
-      tabPanel(
-        title = "Estudantes",
-        mod_estudantes_ui("estudantes_1")
-      ),
-      tabPanel(
-        title = "Matrículas",
-        mod_matriculas_ui("matriculas_1")
-        ),
-      tabPanel(
-        title = "Déficit",
-        mod_deficit_ui("deficit_1")
-      ),
+      # tabPanel(
+      #   title = "Estudantes",
+      #   mod_estudantes_ui("estudantes_1")
+      # ),
+      # tabPanel(
+      #   title = "Matrículas",
+      #   mod_matriculas_ui("matriculas_1")
+      #   ),
+      # tabPanel(
+      #   title = "Déficit",
+      #   mod_deficit_ui("deficit_1")
+      # ),
       tabPanel(
         title = "Simulação",
-        mod_simulacao_ui("simulacao_1")
+        mod_simulacao_ui("simulacao_1"),
+      ),
+      tabPanel(
+        title = "Resultados",
+        mod_resultados_ui("resultados_1")
       )
-      # tabPanel(
-      #   title = "Simulação",
-      #   mod_simulacao_ui("simulacao_1")
-      # )
-      # tabPanel(
-      #   title = "Resultados",
-      #   mod_simulacao_ui("simulacao_1")
-      # )
     ))
 }
 

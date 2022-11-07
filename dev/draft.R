@@ -4,7 +4,6 @@ con <- db_con
 DBI::dbListTables(con)
 
 
-
 gridlayout::grid_container(
   layout = c(
     "      1fr          1fr          1fr          ",

@@ -28,10 +28,11 @@ app_server <- function(input, output, session) {
   )
 
   # Your application server logic
-  mod_estudantes_server("estudantes_1", con)
-  mod_matriculas_server("matriculas_1", con)
-  mod_deficit_server("deficit_1", con)
+  # mod_estudantes_server("estudantes_1", con)
+  # mod_matriculas_server("matriculas_1", con)
+  # mod_deficit_server("deficit_1", con)
   # mod_start_server("start_1")
   mod_simulacao_server("simulacao_1", con)
+  mod_resultados_server("resultados_1")
 
 }

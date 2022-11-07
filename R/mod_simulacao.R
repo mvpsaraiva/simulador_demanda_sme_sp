@@ -17,9 +17,22 @@ mod_simulacao_ui <- function(id) {
       ("data",
         tabsetPanel(
           tabPanel(title = "Escolas", DT::dataTableOutput(ns("tabela_escolas"))),
-          tabPanel(title = "Modificações", DT::dataTableOutput(ns(
-            "tabela_escolas_modificadas"
-          )))
+          tabPanel(title = "Modificações", DT::dataTableOutput(ns("tabela_escolas_modificadas"))),
+          tabPanel(title = "Simular",
+                   gridlayout::grid_card("simular",
+                                         textInput(inputId = ns("cenario_nome"),
+                                                   label = "Cenário",
+                                                   value = date(),
+                                                   width = "40%"),
+                                         textInput(inputId = ns("cenario_autor"),
+                                                   label = "Autor",
+                                                   width = "40%"),
+                                         textAreaInput(inputId = ns("cenario_descricao"),
+                                                       label = "Descricao",
+                                                       width="40%", height = "400px"),
+                                         actionButton(inputId = ns("btn_criar_cenario"), label = "Simular cenário")
+                                         )
+          )
         )),
       gridlayout::grid_nested
       (
@@ -47,11 +60,6 @@ mod_simulacao_ui <- function(id) {
   )
 }
 
-
-editar_escola_ui <- function(id) {
-  ns <- NS(id)
-
-}
 
 #' simulacao Server Functions
 #'
@@ -99,9 +107,9 @@ mod_simulacao_server <- function(id, db_con) {
       )
     )
 
-
     # Tabela de escolas -------------------------------------------------------
     escolas <- reactiveValues(data = DBI::dbReadTable(db_con, "escolas"))
+    tmi <- reactiveValues(data = DBI::dbReadTable(db_con, "tmi_metro_access"))
 
     table_df <- reactive({
       escolas_df <-
@@ -286,6 +294,7 @@ mod_simulacao_server <- function(id, db_con) {
                                escola_atual()$no_entidade[1])
 
         dados_escola <- escola_atual() |>
+          dplyr::left_join(tmi$data, by = c("id_hex" = "id")) |>
           dplyr::mutate(endereco = paste0(ds_complemento, " ", ds_endereco, ", ", nu_endereco)) |>
           dplyr::select(
             #co_entidade, no_entidade,
@@ -295,7 +304,8 @@ mod_simulacao_server <- function(id, db_con) {
             qt_area_total,
             qt_pavimento,
             qt_salas,
-            qt_salas_utilizadas_dentro
+            qt_salas_utilizadas_dentro,
+            travel_time
           ) |>
           # dplyr::mutate(dplyr::across(.cols = dplyr::everything(), .fns = as.character)) |>
           tidyr::pivot_longer(
@@ -314,7 +324,8 @@ mod_simulacao_server <- function(id, db_con) {
             "qt_area_total",
             "qt_pavimento",
             "qt_salas",
-            "qt_salas_utilizadas_dentro"
+            "qt_salas_utilizadas_dentro",
+            "travel_time"
           ),
           labels = c(
             "Área edificada",
@@ -323,7 +334,8 @@ mod_simulacao_server <- function(id, db_con) {
             "Área total do terreno",
             "Número de pavimentos",
             "Número de salas",
-            "Número de salas utilizadas"
+            "Número de salas utilizadas",
+            "Tempo até o metrô (minutos)"
           )
         )
 
@@ -520,6 +532,83 @@ mod_simulacao_server <- function(id, db_con) {
     })
 
 
+    observeEvent(input$btn_criar_cenario, {
+
+      showModal(
+        modalDialog(
+          title = "Operação em andamento",
+          "Aguarde enquanto o novo cenário é processado. Isto pode levar alguns minutos.",
+          footer = NULL
+        )
+      )
+
+      # criar novo cenário de simulação
+      hexgrid <- read_sf_from_db(db_con, "hexgrid")
+
+      populacao_por_hex <- DBI::dbReadTable(db_con, "populacao_por_hex") |>
+        dplyr::filter(ano %in% c(2020, 2035, 2045))
+
+      escolas_df <- DBI::dbReadTable(db_con, "escolas")
+
+      travel_times <- DBI::dbReadTable(db_con, "travel_times")
+
+      cenario <- list(
+        id = uuid::UUIDgenerate(),
+        data_criacao = Sys.time(),
+        nome = input$cenario_nome,
+        autor = input$cenario_autor,
+        descricao = input$cenario_descricao,
+        escolas_mod = modificacoes$escolas,
+        escolas = escolas_df,
+        populacao = populacao_por_hex,
+        ttm = travel_times,
+        hexgrid = hexgrid
+      )
+
+      # calcular demanda educacional com base no cenario
+      cenario_res <- create_new_scenario(cenario)
+
+      # persistir cenário no banco de dados
+      persist_scenario(db_con, cenario_res)
+
+      # escolas_mod = data.frame(co_entidade = 35000024,
+      #                          no_entidade = "GAVIAO PEIXOTO BRIGADEIRO",
+      #                          orig_mat_creche = 10,
+      #                          nova_mat_creche = 20,
+      #
+      #                          orig_mat_pre = 10,
+      #                          nova_mat_pre = 40,
+      #
+      #                          orig_mat_fund_ai = 10,
+      #                          nova_mat_fund_ai = 50,
+      #
+      #                          orig_mat_fund_af = 10,
+      #                          nova_mat_fund_af = 60
+      # )
+
+
+      # limpar memória e UI
+      rm(hexgrid)
+      rm(populacao_por_hex)
+      rm(escolas_df)
+      rm(travel_times)
+
+      modificacoes$escolas <- novo_escolas_mod_vazio()
+
+      # updateTabsetPanel(session, "tab_simulacao", selected = "Escolas")
+
+      removeModal()
+
+      showModal(
+        modalDialog(
+          title = "Operação concluída",
+          "Cenário de simulação calculado com sucesso. Tabelas e mapas gerados podem ser vistos na aba 'Resultados'.",
+          footer = modalButton("Fechar")
+        )
+      )
+
+
+    })
 
   })
 }
