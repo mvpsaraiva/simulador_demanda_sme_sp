@@ -88,10 +88,12 @@ persist_scenario <- function(db_con, data) {
   DBI::dbBegin(db_con)
 
   # escolas modificadas
-  data$escolas_mod$id_cenario <- new_id
-  data$escolas_mod <- dplyr::select(data$escolas_mod, id_cenario, dplyr::everything())
+  if (nrow(data$escolas_mod) > 0) {
+    data$escolas_mod$id_cenario <- new_id
+    data$escolas_mod <- dplyr::select(data$escolas_mod, id_cenario, dplyr::everything())
 
-  DBI::dbWriteTable(db_con, name = "modificacoes", value = data$escolas_mod, append = TRUE)
+    DBI::dbWriteTable(db_con, name = "modificacoes", value = data$escolas_mod, append = TRUE)
+  }
 
   # déficit por hexágono
   data$deficit_hex$id_cenario <- new_id

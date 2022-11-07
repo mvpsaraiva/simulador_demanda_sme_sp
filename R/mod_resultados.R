@@ -15,15 +15,15 @@ mod_resultados_ui <- function(id){
                  "1fr data  "),
       gridlayout::grid_card
       ("data",
-        tabsetPanel(
+        tabsetPanel(id = ns("tab_resultados"),
           tabPanel(title = "Cenários",
                    gridlayout::grid_container(
-                     layout = c("    300px  1fr ",
-                                "1fr text   data"),
+                     layout = c("      300px  1fr ",
+                                "1fr   text   data"
+                     ),
                      gridlayout::grid_card_text("text",
                                                 "Selecione um dos cenários de simulação na tabela ao lado, e explore os resultados nas abas acima: Por Distrito, Por Setor, e o mapeamento por Hexágonos.",
-                                                wrapping_tag = "p"
-                                                ),
+                                                wrapping_tag = "p"),
                      gridlayout::grid_card("data",
                                            DT::dataTableOutput(ns("tabela_cenarios")))
                    )),
@@ -45,10 +45,16 @@ mod_resultados_server <- function(id, db_con){
 
     # Dados pré-carregados - cenários já calculados ------------------------------------
 
-    cenarios <- reactiveValues(
-      data = DBI::dbReadTable(db_con, "cenarios") |>
-        dplyr::select(-data)
-    )
+    cenarios <- reactive({
+      input$tab_resultados
+
+      if (DBI::dbExistsTable(db_con, "cenarios")) {
+        DBI::dbReadTable(db_con, "cenarios") |>
+          dplyr::select(-data)
+      } else {
+        data.frame()
+      }
+    })
 
     output$tabela_cenarios <-  DT::renderDataTable({
 
@@ -63,7 +69,7 @@ mod_resultados_server <- function(id, db_con){
                                            )
                                          )))
 
-      DT::datatable(cenarios$data,
+      DT::datatable(cenarios(),
                     rownames = FALSE,
                     container = sketch,
                     selection = "single",
@@ -77,12 +83,11 @@ mod_resultados_server <- function(id, db_con){
 
     cenario_atual <- reactive({
       if (length(input$tabela_cenarios_rows_selected > 0)) {
-        cenario_selecionado <- cenarios$data[input$tabela_cenarios_rows_selected[1],]
-
+        cenario_selecionado <- cenarios()[input$tabela_cenarios_rows_selected[1],]
 
         return(cenario_selecionado)
       } else {
-        return(dplyr::filter(cenarios$data, id == -1))
+        return(dplyr::filter(cenarios(), id == -1))
       }
     })
 
