@@ -175,10 +175,12 @@ mod_simulacao_server <- function(id, db_con) {
         container = sketch,
         rownames = FALSE,
         selection = "single",
-        extensions = c("Responsive", "Scroller"),
+        extensions = c("Responsive"),
         list(
           lengthMenu = c(5, 10, 15, 30, 50),
           pageLength = 15
+          # dom = 'Blfrtip',
+          # buttons = c('copy', 'csv', 'excel', 'pdf', 'print')
         )
       )
 

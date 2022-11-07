@@ -33,6 +33,6 @@ app_server <- function(input, output, session) {
   # mod_deficit_server("deficit_1", con)
   # mod_start_server("start_1")
   mod_simulacao_server("simulacao_1", con)
-  mod_resultados_server("resultados_1")
+  mod_resultados_server("resultados_1", con)
 
 }

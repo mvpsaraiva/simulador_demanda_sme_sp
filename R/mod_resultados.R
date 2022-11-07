@@ -39,7 +39,7 @@ mod_resultados_ui <- function(id){
 #' resultados Server Functions
 #'
 #' @noRd
-mod_resultados_server <- function(id){
+mod_resultados_server <- function(id, db_con){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
 
