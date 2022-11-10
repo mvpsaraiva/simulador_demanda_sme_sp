@@ -27,7 +27,8 @@ Imports:
     shiny (>= 1.6.0),
     stringr,
     tidyr,
-    uuid
+    uuid,
+    XLConnect
 Suggests: 
     spelling,
     testthat (>= 3.0.0)
