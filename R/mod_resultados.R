@@ -25,9 +25,8 @@ mod_resultados_ui <- function(id){
                      gridlayout::grid_card_text("text",
                                                 "Selecione um dos cenários de simulação na tabela ao lado, e explore os resultados nas abas acima: Por Distrito, Por Setor, e o mapeamento por Hexágonos.",
                                                 wrapping_tag = "p"),
-                     gridlayout::grid_card("btn_x",
-                                           actionButton(ns("btn_exportar_xls")),
-                                           label = "Exportar resultados")),
+                     gridlayout::grid_card("btn_xl",
+                                           downloadButton(ns("download_xlsx"), label = "Exportar resultados")),
                      gridlayout::grid_card("data",
                                            DT::dataTableOutput(ns("tabela_cenarios")))
                    )),
@@ -77,10 +76,14 @@ mod_resultados_server <- function(id, db_con){
                     rownames = FALSE,
                     container = sketch,
                     selection = "single",
-                    extensions = c("Responsive", "Scroller"),
+                    extensions = c("Scroller"),
                     list(
-                      lengthMenu = c(5, 10, 15, 30, 50),
-                      pageLength = 15
+                      # lengthMenu = c(5, 10, 15, 30, 50),
+                      # pageLength = 15
+                      deferRender = TRUE,
+                      scrollX = TRUE,
+                      scrollY = "50vh",
+                      scroller = TRUE
                     )
       )
     })
@@ -187,93 +190,99 @@ mod_resultados_server <- function(id, db_con){
       )
     })
 
-    observeEvent(input$btn_exportar_xls, {
 
-      # Carrega dados do cenário simulado
-      cenario <- DBI::dbGetQuery(db_con,
-                                 sprintf("SELECT * FROM cenarios WHERE id = %d", id_cenario)) |>
-        dplyr::mutate(data = as.Date(as.POSIXct(data, origin="1970-01-01")))
+    output$download_xlsx <- downloadHandler(
+      filename = function() {
+        id_cenario <- cenario_atual()$id[1]
+        xls_file <- paste0("resultados_", id_cenario, ".xlsx")
+      },
 
-      modificacoes <- DBI::dbGetQuery(db_con,
-                                      sprintf("SELECT * FROM modificacoes WHERE id_cenario = %d", id_cenario)) |>
-        dplyr::mutate(add_mat_creche = nova_mat_creche - orig_mat_creche,
-                      add_mat_pre = nova_mat_pre - orig_mat_pre,
-                      add_mat_fund_ai = nova_mat_fund_ai - orig_mat_fund_ai,
-                      add_mat_fund_af = nova_mat_fund_af - orig_mat_fund_af) |>
-        dplyr::select(id_cenario, co_entidade, no_entidade,
-                      orig_mat_creche, nova_mat_creche, add_mat_creche,
-                      orig_mat_pre, nova_mat_pre, add_mat_pre,
-                      orig_mat_fund_ai, nova_mat_fund_ai, add_mat_fund_ai,
-                      orig_mat_fund_af, nova_mat_fund_af, add_mat_fund_af)
+      content = function(file) {
+        id_cenario <- cenario_atual()$id[1]
 
-      deficit_por_hex <- DBI::dbGetQuery(db_con,
-                                         sprintf("SELECT * FROM deficit_por_hex WHERE id_cenario = %d AND cutoff = 15", id_cenario))
+        # Carrega dados do cenário simulado
+        cenario <- DBI::dbGetQuery(db_con,
+                                   sprintf("SELECT * FROM cenarios WHERE id = %d", id_cenario)) |>
+          dplyr::mutate(data = as.Date(as.POSIXct(data, origin="1970-01-01")))
 
-      deficit_por_setor <- DBI::dbGetQuery(db_con,
-                                         sprintf("SELECT * FROM deficit_por_setor WHERE id_cenario = %d AND cutoff = 15", id_cenario))
+        modificacoes <- DBI::dbGetQuery(db_con,
+                                        sprintf("SELECT * FROM modificacoes WHERE id_cenario = %d", id_cenario)) |>
+          dplyr::mutate(add_mat_creche = nova_mat_creche - orig_mat_creche,
+                        add_mat_pre = nova_mat_pre - orig_mat_pre,
+                        add_mat_fund_ai = nova_mat_fund_ai - orig_mat_fund_ai,
+                        add_mat_fund_af = nova_mat_fund_af - orig_mat_fund_af) |>
+          dplyr::select(id_cenario, co_entidade, no_entidade,
+                        orig_mat_creche, nova_mat_creche, add_mat_creche,
+                        orig_mat_pre, nova_mat_pre, add_mat_pre,
+                        orig_mat_fund_ai, nova_mat_fund_ai, add_mat_fund_ai,
+                        orig_mat_fund_af, nova_mat_fund_af, add_mat_fund_af)
 
-      deficit_por_distrito <- DBI::dbGetQuery(db_con,
-                                         sprintf("SELECT * FROM deficit_por_distrito WHERE id_cenario = %d AND cutoff = 15", id_cenario))
+        deficit_por_hex <- DBI::dbGetQuery(db_con,
+                                           sprintf("SELECT * FROM deficit_por_hex WHERE id_cenario = %d AND cutoff = 15", id_cenario))
 
-      # Carrega dados de déficit atual
-      deficit_por_hex_orig <- DBI::dbGetQuery(db_con, "SELECT * FROM deficit_bfca_hex WHERE cutoff = 15")
-      deficit_por_setor_orig <- DBI::dbGetQuery(db_con, "SELECT * FROM deficit_bfca_setor WHERE cutoff = 15")
-      deficit_por_distrito_orig <- DBI::dbGetQuery(db_con, "SELECT * FROM deficit_bfca_distrito WHERE cutoff = 15")
+        deficit_por_setor <- DBI::dbGetQuery(db_con,
+                                             sprintf("SELECT * FROM deficit_por_setor WHERE id_cenario = %d AND cutoff = 15", id_cenario))
 
-      # Preparar dados para Excel
-      deficit_hex_joined <- dplyr::inner_join(deficit_por_hex_orig, deficit_por_hex,
-                                              suffix = c("_orig", "_sim"),
-                                              by = c("id_hex", "ano", "faixa_idade", "etapa", "serie", "cutoff"))
+        deficit_por_distrito <- DBI::dbGetQuery(db_con,
+                                                sprintf("SELECT * FROM deficit_por_distrito WHERE id_cenario = %d AND cutoff = 15", id_cenario))
 
-      deficit_hex_joined <- deficit_hex_joined |>
-        dplyr::select(id_hex, nr_distrito, nm_distrito, cd_setor,
-                      ano, faixa_idade, etapa, serie,
-                      populacao = populacao_orig, matriculas = matriculas_orig,
-                      vagas_acessiveis_orig, deficit_orig,
-                      vagas_acessiveis_sim, deficit_sim) |>
-        dplyr::arrange(cd_setor, faixa_idade, ano, id_hex)
+        # Carrega dados de déficit atual
+        deficit_por_hex_orig <- DBI::dbGetQuery(db_con, "SELECT * FROM deficit_bfca_hex WHERE cutoff = 15")
+        deficit_por_setor_orig <- DBI::dbGetQuery(db_con, "SELECT * FROM deficit_bfca_setor WHERE cutoff = 15")
+        deficit_por_distrito_orig <- DBI::dbGetQuery(db_con, "SELECT * FROM deficit_bfca_distrito WHERE cutoff = 15")
 
-      deficit_setor_joined <- dplyr::inner_join(deficit_por_setor_orig, deficit_por_setor,
-                                                by = c("cd_setor", "ano", "faixa_idade", "etapa", "serie", "cutoff"),
-                                                suffix = c("_orig", "_sim"))
+        # Preparar dados para Excel
+        deficit_hex_joined <- dplyr::inner_join(deficit_por_hex_orig, deficit_por_hex,
+                                                suffix = c("_orig", "_sim"),
+                                                by = c("id_hex", "ano", "faixa_idade", "etapa", "serie", "cutoff"))
 
+        deficit_hex_joined <- deficit_hex_joined |>
+          dplyr::select(id_hex, nr_distrito, nm_distrito, cd_setor,
+                        ano, faixa_idade, etapa, serie,
+                        populacao = populacao_orig, matriculas = matriculas_orig,
+                        vagas_acessiveis_orig, deficit_orig,
+                        vagas_acessiveis_sim, deficit_sim) |>
+          dplyr::arrange(cd_setor, faixa_idade, ano, id_hex)
 
-      deficit_setor_joined <- deficit_setor_joined |>
-        dplyr::select(cd_dre = cd_dre_orig, nr_distrito = nr_distrito_orig, nm_distrito = nm_distrito_orig,
-                      cd_setor, ano, faixa_idade, etapa, serie,
-                      populacao = populacao_orig, matriculas = matriculas_orig,
-                      vagas_acessiveis_orig, deficit_orig,
-                      vagas_acessiveis_sim , deficit_sim)
-
-
-      deficit_distrito_joined <- dplyr::inner_join(deficit_por_distrito_orig, deficit_por_distrito,
-                                                   by = c("cd_dre", "nr_distrito", "nm_distrito",
-                                                          "ano", "faixa_idade", "etapa", "serie", "cutoff"),
-                                                   suffix = c("_orig", "_sim"))
-
-      deficit_distrito_joined <- deficit_distrito_joined |>
-        dplyr::select(cd_dre, nr_distrito, nm_distrito,
-                      ano, faixa_idade, etapa, serie,
-                      populacao = populacao_orig, matriculas = matriculas_orig,
-                      vagas_acessiveis_orig, deficit_orig,
-                      vagas_acessiveis_sim, deficit_sim)
+        deficit_setor_joined <- dplyr::inner_join(deficit_por_setor_orig, deficit_por_setor,
+                                                  by = c("cd_setor", "ano", "faixa_idade", "etapa", "serie", "cutoff"),
+                                                  suffix = c("_orig", "_sim"))
 
 
-      # writexl::write_xlsx(cenario, "cenario.xlsx")
-      # writexl::write_xlsx(modificacoes, "modificacoes.xlsx")
-      #
-      #
-      # writexl::write_xlsx(deficit_hex_joined, "deficit_hex.xlsx")
-      # writexl::write_xlsx(deficit_setor_joined, "deficit_setor.xlsx")
-      # writexl::write_xlsx(deficit_distrito_joined, "deficit_distrito.xlsx")
-      #
+        deficit_setor_joined <- deficit_setor_joined |>
+          dplyr::select(cd_dre = cd_dre_orig, nr_distrito = nr_distrito_orig, nm_distrito = nm_distrito_orig,
+                        cd_setor, ano, faixa_idade, etapa, serie,
+                        populacao = populacao_orig, matriculas = matriculas_orig,
+                        vagas_acessiveis_orig, deficit_orig,
+                        vagas_acessiveis_sim , deficit_sim)
 
 
+        deficit_distrito_joined <- dplyr::inner_join(deficit_por_distrito_orig, deficit_por_distrito,
+                                                     by = c("cd_dre", "nr_distrito", "nm_distrito",
+                                                            "ano", "faixa_idade", "etapa", "serie", "cutoff"),
+                                                     suffix = c("_orig", "_sim"))
 
+        deficit_distrito_joined <- deficit_distrito_joined |>
+          dplyr::select(cd_dre, nr_distrito, nm_distrito,
+                        ano, faixa_idade, etapa, serie,
+                        populacao = populacao_orig, matriculas = matriculas_orig,
+                        vagas_acessiveis_orig, deficit_orig,
+                        vagas_acessiveis_sim, deficit_sim)
 
+        template_xlsx <- XLConnect::loadWorkbook("data/template_resultados.xlsx")
 
+        XLConnect::readWorksheet(template_xlsx, "raw_cenario")
 
-    })
+        XLConnect::writeWorksheet(template_xlsx, cenario, "raw_cenario")
+        XLConnect::writeWorksheet(template_xlsx, modificacoes, "raw_modificacoes")
+        XLConnect::writeWorksheet(template_xlsx, deficit_distrito_joined, "raw_deficit_distrito")
+        XLConnect::writeWorksheet(template_xlsx, deficit_setor_joined, "raw_deficit_setor")
+        XLConnect::writeWorksheet(template_xlsx, deficit_hex_joined, "raw_deficit_hex")
+
+        xls_file <- paste0("data/resultados_", id_cenario, ".xlsx")
+        XLConnect::saveWorkbook(template_xlsx, file)
+
+      })
 
 
 
