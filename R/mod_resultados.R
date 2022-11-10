@@ -200,6 +200,9 @@ mod_resultados_server <- function(id, db_con){
       content = function(file) {
         id_cenario <- cenario_atual()$id[1]
 
+        temp_xls <- tempfile()
+        file.copy("data/template_resultados.xlsx", temp_xls)
+
         # Carrega dados do cenário simulado
         cenario <- DBI::dbGetQuery(db_con,
                                    sprintf("SELECT * FROM cenarios WHERE id = %d", id_cenario)) |>
@@ -217,8 +220,8 @@ mod_resultados_server <- function(id, db_con){
                         orig_mat_fund_ai, nova_mat_fund_ai, add_mat_fund_ai,
                         orig_mat_fund_af, nova_mat_fund_af, add_mat_fund_af)
 
-        deficit_por_hex <- DBI::dbGetQuery(db_con,
-                                           sprintf("SELECT * FROM deficit_por_hex WHERE id_cenario = %d AND cutoff = 15", id_cenario))
+        # deficit_por_hex <- DBI::dbGetQuery(db_con,
+        #                                    sprintf("SELECT * FROM deficit_por_hex WHERE id_cenario = %d AND cutoff = 15", id_cenario))
 
         deficit_por_setor <- DBI::dbGetQuery(db_con,
                                              sprintf("SELECT * FROM deficit_por_setor WHERE id_cenario = %d AND cutoff = 15", id_cenario))
@@ -227,22 +230,22 @@ mod_resultados_server <- function(id, db_con){
                                                 sprintf("SELECT * FROM deficit_por_distrito WHERE id_cenario = %d AND cutoff = 15", id_cenario))
 
         # Carrega dados de déficit atual
-        deficit_por_hex_orig <- DBI::dbGetQuery(db_con, "SELECT * FROM deficit_bfca_hex WHERE cutoff = 15")
+        # deficit_por_hex_orig <- DBI::dbGetQuery(db_con, "SELECT * FROM deficit_bfca_hex WHERE cutoff = 15")
         deficit_por_setor_orig <- DBI::dbGetQuery(db_con, "SELECT * FROM deficit_bfca_setor WHERE cutoff = 15")
         deficit_por_distrito_orig <- DBI::dbGetQuery(db_con, "SELECT * FROM deficit_bfca_distrito WHERE cutoff = 15")
 
         # Preparar dados para Excel
-        deficit_hex_joined <- dplyr::inner_join(deficit_por_hex_orig, deficit_por_hex,
-                                                suffix = c("_orig", "_sim"),
-                                                by = c("id_hex", "ano", "faixa_idade", "etapa", "serie", "cutoff"))
-
-        deficit_hex_joined <- deficit_hex_joined |>
-          dplyr::select(id_hex, nr_distrito, nm_distrito, cd_setor,
-                        ano, faixa_idade, etapa, serie,
-                        populacao = populacao_orig, matriculas = matriculas_orig,
-                        vagas_acessiveis_orig, deficit_orig,
-                        vagas_acessiveis_sim, deficit_sim) |>
-          dplyr::arrange(cd_setor, faixa_idade, ano, id_hex)
+        # deficit_hex_joined <- dplyr::inner_join(deficit_por_hex_orig, deficit_por_hex,
+        #                                         suffix = c("_orig", "_sim"),
+        #                                         by = c("id_hex", "ano", "faixa_idade", "etapa", "serie", "cutoff"))
+        #
+        # deficit_hex_joined <- deficit_hex_joined |>
+        #   dplyr::select(id_hex, nr_distrito, nm_distrito, cd_setor,
+        #                 ano, faixa_idade, etapa, serie,
+        #                 populacao = populacao_orig, matriculas = matriculas_orig,
+        #                 vagas_acessiveis_orig, deficit_orig,
+        #                 vagas_acessiveis_sim, deficit_sim) |>
+        #   dplyr::arrange(cd_setor, faixa_idade, ano, id_hex)
 
         deficit_setor_joined <- dplyr::inner_join(deficit_por_setor_orig, deficit_por_setor,
                                                   by = c("cd_setor", "ano", "faixa_idade", "etapa", "serie", "cutoff"),
@@ -269,17 +272,16 @@ mod_resultados_server <- function(id, db_con){
                         vagas_acessiveis_orig, deficit_orig,
                         vagas_acessiveis_sim, deficit_sim)
 
-        template_xlsx <- XLConnect::loadWorkbook("data/template_resultados.xlsx")
-
-        XLConnect::readWorksheet(template_xlsx, "raw_cenario")
+        template_xlsx <- XLConnect::loadWorkbook(temp_xls)
+        # template_xlsx <- XLConnect::loadWorkbook("data/template_resultados.xlsx")
 
         XLConnect::writeWorksheet(template_xlsx, cenario, "raw_cenario")
         XLConnect::writeWorksheet(template_xlsx, modificacoes, "raw_modificacoes")
         XLConnect::writeWorksheet(template_xlsx, deficit_distrito_joined, "raw_deficit_distrito")
         XLConnect::writeWorksheet(template_xlsx, deficit_setor_joined, "raw_deficit_setor")
-        XLConnect::writeWorksheet(template_xlsx, deficit_hex_joined, "raw_deficit_hex")
+        # XLConnect::writeWorksheet(template_xlsx, deficit_hex_joined, "raw_deficit_hex")
 
-        xls_file <- paste0("data/resultados_", id_cenario, ".xlsx")
+        # xls_file <- paste0("data/resultados_", id_cenario, ".xlsx")
         XLConnect::saveWorkbook(template_xlsx, file)
 
       })
