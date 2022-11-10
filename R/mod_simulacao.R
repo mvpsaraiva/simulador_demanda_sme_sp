@@ -16,7 +16,16 @@ mod_simulacao_ui <- function(id) {
       gridlayout::grid_card
       ("data",
         tabsetPanel(
-          tabPanel(title = "Escolas", DT::dataTableOutput(ns("tabela_escolas"))),
+          # tabPanel(title = "Mapa"),
+          tabPanel(title = "Tabela",
+                   # div(
+                   #   id = ns("tabela_escolas_div"),
+                   #   class = "simpleDiv",
+                   #   style = "overflow-y: auto; height: 80%",
+                     DT::dataTableOutput(ns("tabela_escolas"))
+                   # )),
+          ),
+
           tabPanel(title = "Modificações", DT::dataTableOutput(ns("tabela_escolas_modificadas"))),
           tabPanel(title = "Simular",
                    gridlayout::grid_card("simular",
@@ -175,10 +184,18 @@ mod_simulacao_server <- function(id, db_con) {
         container = sketch,
         rownames = FALSE,
         selection = "single",
-        extensions = c("Responsive"),
-        list(
-          lengthMenu = c(5, 10, 15, 30, 50),
-          pageLength = 15
+        extensions = c("Scroller"),
+        filter = list(
+          position = 'top', clear = FALSE
+        ),
+        options = list(
+          # lengthMenu = c(5, 10, 15, 30, 50),
+          # pageLength = 15
+          deferRender = TRUE,
+          scrollX = TRUE,
+          scrollY = "50vh",
+          scroller = TRUE
+
           # dom = 'Blfrtip',
           # buttons = c('copy', 'csv', 'excel', 'pdf', 'print')
         )
@@ -528,6 +545,7 @@ mod_simulacao_server <- function(id, db_con) {
         list(
           lengthMenu = c(5, 10, 15, 30, 50),
           pageLength = 15
+
         )
       )
 

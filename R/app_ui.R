@@ -10,6 +10,7 @@ app_ui <- function(request) {
     # Your application UI logic
     navbarPage(
       title = "demanda.sme.sp",
+      collapsible = TRUE,
       # tabPanel(
       #   title = "Estudantes",
       #   mod_estudantes_ui("estudantes_1")
