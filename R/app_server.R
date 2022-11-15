@@ -27,12 +27,40 @@ app_server <- function(input, output, session) {
     golem::get_golem_options("db_path")
   )
 
+
+  # initialise the app state with the default STATE_NOTHING_SELECTED
+  app_state <- reactiveValues(
+    # state = list(id = STATE_NOTHING_SELECTED, store = list()),
+    # direction = INITIAL_DIRECTION,
+    # region = INITIAL_REGION,
+    window_height = 800,
+    # d_commute = NULL,
+    # map_id = NULL,
+    # data_source = INITIAL_DATA_SOURCE
+
+    db_con = con
+  )
+
+  # update the app state when browser window is re-sized
+  observeEvent(input$window_height, app_state$window_height <- input$window_height)
+
   # Your application server logic
   # mod_estudantes_server("estudantes_1", con)
   # mod_matriculas_server("matriculas_1", con)
   # mod_deficit_server("deficit_1", con)
   # mod_start_server("start_1")
-  mod_simulacao_server("simulacao_1", con)
-  mod_resultados_server("resultados_1", con)
+
+  mod_simulation_server("simulacao", app_state)
+  mod_sim_config_server("sim_config", app_state)
+  mod_sim_table_server("sim_table", app_state)
+  mod_sim_map_server("sim_map", app_state)
+  mod_sim_stats_server("sim_stats", app_state)
+  mod_sim_school_server("sim_school", app_state)
+#
+#   mod_simulation_server("simulacao", con)
+#   mod_simulation_server("simulacao", con)
+#
+#   mod_simulacao_server("simulacao_1", con)
+#   mod_resultados_server("resultados_1", con)
 
 }
