@@ -47,6 +47,7 @@ golem::add_sass_file("custom")
 # usethis::use_data_raw(name = "hexgrid", open = FALSE)
 # usethis::use_data_raw(name = "hexgrid_setor_lookup", open = FALSE)
 # usethis::use_data_raw(name = "escolas", open = FALSE)
+# usethis::use_data_raw(name = "theme", open = FALSE)
 
 
 ## Tests ----

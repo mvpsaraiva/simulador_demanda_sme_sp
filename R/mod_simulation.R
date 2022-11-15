@@ -11,7 +11,7 @@ mod_simulation_ui <- function(id){
   ns <- NS(id)
   tagList(
 
-    mod_sim_config_ui("sim_config_1")
+    mod_sim_config_ui("sim_config")
 
   )
 }

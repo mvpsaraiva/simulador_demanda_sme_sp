@@ -51,3 +51,22 @@ gridlayout::grid_container(
                                   label = "Fundamental II")
   )
 )
+
+
+library(mapboxer)
+
+load("data/setores.rda")
+sf_shape <- setores
+
+sf_shape |>
+  as_mapbox_source() |>
+  mapboxer(
+    center = c(174.763336, -36.848461),
+    zoom = 10
+  ) |>
+  mapboxer::add_fill_layer(
+    fill_color = "rgba(255,255,255,0.1)", fill_outline_color = "rgba(255,255,255,0.5)", id = "mb",
+    fill_sort_key = 1, source = mapboxer::as_mapbox_source(sf_shape)
+  ) |>
+  # add_line_layer(line_color = "#eeeeee", line_opacity = 0.2) |>
+  mapboxer::fit_bounds(sf::st_bbox(setores))

@@ -30,12 +30,15 @@ app_server <- function(input, output, session) {
 
   # initialise the app state with the default STATE_NOTHING_SELECTED
   app_state <- reactiveValues(
+    dre_district = app_states$INITIAL_DRE,
+    state = list(id = app_states$STATE_NOTHING_SELECTED, store = list()),
+    school_selected = -1,
     # state = list(id = STATE_NOTHING_SELECTED, store = list()),
     # direction = INITIAL_DIRECTION,
     # region = INITIAL_REGION,
     window_height = 800,
     # d_commute = NULL,
-    # map_id = NULL,
+    map_id = NULL,
     # data_source = INITIAL_DATA_SOURCE
 
     db_con = con
@@ -50,10 +53,11 @@ app_server <- function(input, output, session) {
   # mod_deficit_server("deficit_1", con)
   # mod_start_server("start_1")
 
-  mod_simulation_server("simulacao", app_state)
+  mod_simulation_server("simulation", app_state)
   mod_sim_config_server("sim_config", app_state)
   mod_sim_table_server("sim_table", app_state)
   mod_sim_map_server("sim_map", app_state)
+  mod_sim_map_filter_server("sim_map_filter", app_state)
   mod_sim_stats_server("sim_stats", app_state)
   mod_sim_school_server("sim_school", app_state)
 #

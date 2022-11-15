@@ -13,6 +13,7 @@ run_app <- function(
   enableBookmarking = NULL,
   uiPattern = "/",
   db_path = "data/demanda_sme_v4.db",
+  mapbox_token = "pk.eyJ1IjoibXZwc2FyYWl2YSIsImEiOiJjbGFpaG9kdmMwMnE5M29wOHV2MGM4Y3B2In0.sl-zkob04cCpUiu0TxneTg",
   ...
 ) {
   with_golem_options(
@@ -26,6 +27,7 @@ run_app <- function(
     ),
     golem_opts = list(
       db_path = db_path,
+      mapbox_token = mapbox_token,
       ...)
   )
 }

@@ -25,7 +25,7 @@ app_ui <- function(request) {
       # ),
       tabPanel(
         title = "Simulação",
-        mod_simulation_ui("simulacao"),
+        mod_simulation_ui("simulation"),
       )
       # tabPanel(
       #   title = "Resultados",
