@@ -25,13 +25,6 @@ mod_sim_config_ui <- function(id){
       mod_sim_map_ui("sim_map"),
       mod_sim_map_filter_ui("sim_map_filter")
     ),
-    # column(
-    #   width = 2,
-    #   style = "height: 100%; padding-bottom: 65px",
-    #   material_card(
-    #     mod_sim_stats_ui("sim_stats")
-    #   )
-    # ),
     column(
       width = 3,
       style = "height: 100%; padding: 0 0 0 0",

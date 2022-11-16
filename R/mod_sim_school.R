@@ -66,21 +66,67 @@ mod_sim_school_server <- function(id, state){
             h5(paste0(escola$co_entidade[1], " | ", escola$ds_endereco[1]), class = "tile-subheadline"),
             renderTable({ escola |> dplyr::select(info, valor)}, colnames = FALSE, width = "100%"),
 
-            actionButton(ns("btn_editar_escola"), label = "Editar Capacidade da Escola"),
+            actionButton(ns("btn_edit_school"), label = "Editar Capacidade da Escola"),
 
             hr(),
 
             div(
               style = "height: 100px; float: right",
-              actionButton(ns("btn_rodar_simulacao"), label = "Rodar Simulação >>>")
+              actionButton(ns("btn_run_simulation"), label = "Rodar Simulação >>>")
             )
           )
         )
       }
-
-
-
     })
+
+
+  observeEvent(input$btn_edit_school, {
+    showModal(modalDialog(
+      size = "l",
+    ))
+  })
+
+  # ui_edit_school <- function() {
+  #   escola <- prepare_school_data(escolas, state$school_selected)
+  #
+  #   escola
+  #
+  #   fluidRow(
+  #     div(
+  #       h4(escola$no_entidade[1], class = "tile-headline"),
+  #       h5(paste0(escola$co_entidade[1], " | ", escola$ds_endereco[1]), class = "tile-subheadline"),
+  #       renderTable({ escola |> dplyr::select(info, valor)}, colnames = FALSE, width = "100%"),
+  #     )
+  #   ),
+  #   fluidRow(
+  #     column(
+  #       6,
+  #       h4("Capacidade da Escola", class = "tile-headline")
+  #     ),
+  #     column(
+  #       6,
+  #       h4("Capacidade Ampliada", class = "tile-headline")
+  #     ),
+  #   ),
+  #   fluidRow(
+  #     column(
+  #       width = 6,
+  #
+  #
+  #            ),
+  #   ),
+  #
+  #
+  #
+  #
+  #   tagList(
+  #
+  #   )
+
+  # }
+
+
+
   })
 }
 
