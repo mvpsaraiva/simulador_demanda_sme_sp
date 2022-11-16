@@ -45,7 +45,8 @@ app_server <- function(input, output, session) {
   )
 
   # update the app state when browser window is re-sized
-  observeEvent(input$window_height, app_state$window_height <- input$window_height)
+  # observeEvent(input$window_height, app_state$window_height <- input$window_height)
+  observeEvent(input$window_size, app_state$window_height <- input$window_size$height)
 
   # Your application server logic
   # mod_estudantes_server("estudantes_1", con)

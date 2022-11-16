@@ -51,32 +51,32 @@ search_icon <- function(fill = "none") {
   sprintf("url('data:image/svg+xml;base64,%s')", jsonlite::base64_enc(svg))
 }
 
-options(reactable.theme = reactable::reactableTheme(
-  color = "hsl(233, 9%, 87%)",
-  backgroundColor = "#191a1a",
-  borderColor = "hsl(233, 9%, 22%)",
-  stripedColor = "hsl(233, 12%, 22%)",
-  highlightColor = "hsl(233, 12%, 24%)",
-  inputStyle = list(backgroundColor = "hsl(233, 9%, 25%)"),
-  selectStyle = list(backgroundColor = "hsl(233, 9%, 25%)"),
-  pageButtonHoverStyle = list(backgroundColor = "hsl(233, 9%, 25%)"),
-  pageButtonActiveStyle = list(backgroundColor = "hsl(233, 9%, 28%)"),
-
-  # Full-width search bar with search icon
-  searchInputStyle = list(
-    paddingLeft = "30px",
-    paddingTop = "5px",
-    paddingBottom = "5px",
-    width = "100%",
-    border = "none",
-    backgroundColor = "#242424",
-    backgroundImage = search_icon("hsl(0, 0%, 70%)"),
-    backgroundSize = "16px",
-    backgroundPosition = "left 8px center",
-    backgroundRepeat = "no-repeat",
-    "&:focus" = list(backgroundColor = "rgba(255, 255, 255, 0.1)", border = "none"),
-    "&:hover, &:focus" = list(backgroundImage = search_icon("hsl(0, 0%, 95%)")),
-    "::placeholder" = list(color = "hsl(0, 0%, 55%)"),
-    "&:hover::placeholder, &:focus::placeholder" = list(color = "hsl(0, 0%, 95%)")
-  )
-))
+# options(reactable.theme = reactable::reactableTheme(
+#   color = "hsl(233, 9%, 87%)",
+#   backgroundColor = "#191a1a",
+#   borderColor = "hsl(233, 9%, 22%)",
+#   stripedColor = "hsl(233, 12%, 22%)",
+#   highlightColor = "hsl(233, 12%, 24%)",
+#   inputStyle = list(backgroundColor = "hsl(233, 9%, 25%)"),
+#   selectStyle = list(backgroundColor = "hsl(233, 9%, 25%)"),
+#   pageButtonHoverStyle = list(backgroundColor = "hsl(233, 9%, 25%)"),
+#   pageButtonActiveStyle = list(backgroundColor = "hsl(233, 9%, 28%)"),
+#
+#   # Full-width search bar with search icon
+#   searchInputStyle = list(
+#     paddingLeft = "30px",
+#     paddingTop = "5px",
+#     paddingBottom = "5px",
+#     width = "100%",
+#     border = "none",
+#     backgroundColor = "#242424",
+#     backgroundImage = search_icon("hsl(0, 0%, 70%)"),
+#     backgroundSize = "16px",
+#     backgroundPosition = "left 8px center",
+#     backgroundRepeat = "no-repeat",
+#     "&:focus" = list(backgroundColor = "rgba(255, 255, 255, 0.1)", border = "none"),
+#     "&:hover, &:focus" = list(backgroundImage = search_icon("hsl(0, 0%, 95%)")),
+#     "::placeholder" = list(color = "hsl(0, 0%, 55%)"),
+#     "&:hover::placeholder, &:focus::placeholder" = list(color = "hsl(0, 0%, 95%)")
+#   )
+# ))

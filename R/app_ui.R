@@ -7,6 +7,15 @@
 app_ui <- function(request) {
   tagList(# Leave this function for adding external resources
     golem_add_external_resources(),
+    tags$head(
+      tags$script(HTML('
+        $(window).resize(function(event){
+          var w = $(this).width();
+          var h = $(this).height();
+          var obj = {width: w, height: h};
+          Shiny.onInputChange("window_size", obj);
+        });
+      '))),
     # Your application UI logic
     navbarPage(
       title = "demanda.sme.sp",
@@ -25,6 +34,7 @@ app_ui <- function(request) {
       # ),
       tabPanel(
         title = "Simulação",
+        style = "margin: 0; padding: 0; height: 100%",
         mod_simulation_ui("simulation"),
       )
       # tabPanel(
@@ -45,17 +55,11 @@ app_ui <- function(request) {
 #' @importFrom golem add_resource_path activate_js favicon bundle_resources
 #' @noRd
 golem_add_external_resources <- function() {
-  add_resource_path(
-    "www",
-    app_sys("app/www")
-  )
+  add_resource_path("www", app_sys("app/www"))
 
   tags$head(
     favicon(),
-    bundle_resources(
-      path = app_sys("app/www"),
-      app_title = "demanda.sme.sp"
-    )
+    bundle_resources(path = app_sys("app/www"), app_title = "demanda.sme.sp")
     # Add here other external resources
     # for example, you can add shinyalert::useShinyalert()
   )

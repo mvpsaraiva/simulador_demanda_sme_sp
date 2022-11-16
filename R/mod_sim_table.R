@@ -11,8 +11,9 @@ mod_sim_table_ui <- function(id){
   ns <- NS(id)
   tagList(
     div(
-      style = "margin: 5px -5px 0 -5px; height: calc(100% - 1px)",
-      reactable::reactableOutput(ns("table_schools"), height = "100%")
+
+      # style = "margin: 5px -5px 0 -5px; height: calc(100vh - 10px)",
+      reactable::reactableOutput(ns("table_schools"), height = "90vh")
     )
   )
 }
@@ -56,7 +57,7 @@ mod_sim_table_server <- function(id, state){
           dplyr::filter(nm_dre == state$dre)
       }
 
-      if (state$state$id == STATE_MB_SELECTED) {
+      if (state$state$id == app_states$STATE_MB_SELECTED) {
         d <- d |>
           dplyr::filter(cd_setor == state$state$store$selected_mb)
       }
@@ -89,8 +90,7 @@ mod_sim_table_server <- function(id, state){
                                             big.mark = ".", decimal.mark = ",")
 
     output$table_schools <- reactable::renderReactable({
-      # req(d_table(), state$window_height)
-      req(state$window_height)
+      req(df_escolas(), state$window_height)
 
       reactable::reactable(
         df_escolas(),
@@ -107,16 +107,16 @@ mod_sim_table_server <- function(id, state){
         columns = list(
           cd_setor = reactable::colDef(name = "Setor", filterable = TRUE),
           nm_distrito = reactable::colDef(name = "Distrito", show = FALSE),
-          co_entidade = reactable::colDef(name = "Código (MEC)", filterable = TRUE),
-          no_entidade = reactable::colDef(name = "Nome", filterable = TRUE, class = "area-link"),
-          tp_categoria = reactable::colDef(name = "Dependência", filterable = TRUE),
-          qt_mat_inf_cre = reactable::colDef(name = "Mat. Creche", header = icon("car"), footer = footer_total),
-          qt_mat_inf_pre = reactable::colDef(name = "Mat. Pré-escola", header = icon("train"), footer = footer_total),
-          qt_mat_fund_ai = reactable::colDef(name = "Mat. Fundamental I", header = icon("walking"), footer = footer_total),
-          qt_mat_fund_af = reactable::colDef(name = "Mat. Fundamental II", header = icon("bicycle"), footer = footer_total)
+          co_entidade = reactable::colDef(name = "Código (MEC)", filterable = TRUE, show = FALSE),
+          no_entidade = reactable::colDef(name = "Nome", filterable = TRUE, class = "area-link", minWidth = 150),
+          tp_categoria = reactable::colDef(name = "Rede", filterable = TRUE),
+          qt_mat_inf_cre = reactable::colDef(name = "CRE", footer = footer_total),# header = icon("car")),
+          qt_mat_inf_pre = reactable::colDef(name = "PRE", footer = footer_total),# header = icon("train")),
+          qt_mat_fund_ai = reactable::colDef(name = "F I", footer = footer_total),# header = icon("walking")),
+          qt_mat_fund_af = reactable::colDef(name = "F II", footer = footer_total)#, header = icon("bicycle"))
         ),
         language = reactable::reactableLang(
-          searchPlaceholder = "Filtrar escolas",
+          searchPlaceholder = "Pesquisar escolas",
           noData = "Nenhuma escola encontrada",
           pageInfo = "{rowStart}\u2013{rowEnd} de {rows} escolas",
           pagePrevious = "\u276e",
@@ -127,12 +127,12 @@ mod_sim_table_server <- function(id, state){
     })
 
     observeEvent(input$show_details, {
-      req(input$show_details)
+      req(df_escolas(), input$show_details)
 
       selected_row <- df_escolas()[input$show_details$index,]
 
       # change the app state
-      state$school_selected <- selected_row$co_entidade
+      state$school_selected <- selected_row$co_entidade[1]
     })
 
 

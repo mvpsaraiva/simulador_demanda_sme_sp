@@ -10,7 +10,8 @@
 mod_sim_map_ui <- function(id){
   ns <- NS(id)
   tagList(
-    mapboxer::mapboxerOutput(ns("map"), height = "700")
+    # tags$style(type = "text/css", "#map {height: calc(100vh - 80px) !important;}"),
+    mapboxer::mapboxerOutput(ns("map"), height = "90vh")
     # uiOutput(ns("selected_area"))
   )
 }
@@ -42,9 +43,9 @@ mod_sim_map_server <- function(id, state){
 
     # Map ---------------------------------------------------------------------
 
-    tooltip_mb <- "<div>{{cd_setor}}</div>"
-    tooltip_selected_mb <- "<div><div style='font-weight: bold'>{{SA22018__1}}</div><div style='white-space:nowrap'>{{commute_all}} residents work in <strong>{{name}}</strong></div></div>"
-    tooltip_highlighted_mb <- "<div><div style='font-size: 16px'><strong>{{commute_all}}</strong> commuters</div><div>{{direction}} <strong>{{SA22018__1}}</strong></div></div>"
+    tooltip_mb <- "<div><b>Distrito: </b>{{nm_distrito}}</div> <div><b>Setor: </b>{{cd_setor}}</div>"
+    tooltip_selected_mb <- "<div><b>Distrito: </b>{{nm_distrito}}</div> <div><b>Setor: </b>{{cd_setor}}</div>"
+    tooltip_highlighted_mb <- "<div><b>Distrito: </b>{{nm_distrito}}</div> <div><b>Setor: </b>{{cd_setor}}</div>"
 
     map_rendered <- reactiveVal(FALSE)
     output$map <- mapboxer::renderMapboxer({
@@ -52,7 +53,7 @@ mod_sim_map_server <- function(id, state){
       state$map_id <- ns("map")
       map_rendered(TRUE)
 
-      mapboxer::mapboxer(style = "mapbox://styles/mapbox/dark-v9", token = golem::get_golem_options("mapbox_token"))  |>
+      mapboxer::mapboxer(style = "mapbox://styles/mapbox/light-v9", token = golem::get_golem_options("mapbox_token"))  |>
 
         # meshblock highlights
         mapboxer::add_fill_layer(
@@ -70,7 +71,7 @@ mod_sim_map_server <- function(id, state){
 
         # map overlay of all meshblocks
         mapboxer::add_fill_layer(
-          fill_color = "rgba(255,255,255,0.1)", fill_outline_color = "rgba(255,255,255,0.5)", id = "mb",
+          fill_color = "rgba(64,64,64,0.1)", fill_outline_color = "rgba(64,64,64,0.5)", id = "mb",
           fill_sort_key = 1, source = mapboxer::as_mapbox_source(sf_shape)
         ) |>
 
@@ -87,20 +88,42 @@ mod_sim_map_server <- function(id, state){
 
     observeEvent(input$map_onclick, {
       # unpack the meshblock associated with the selected shape
-      selected_mb <- input$map_onclick$props$cd_setor
+      req(state$state$id)
 
-      # change the app state
-      state$state <- list(
-        id = STATE_MB_SELECTED,
-        store = list(selected_mb = selected_mb, event_source = "map")
-      )
+      if (state$state$id == app_states$STATE_MB_SELECTED) {
+        if (state$state$store$selected_mb == input$map_onclick$props$cd_setor) {
+          # some Sector is already selected
+          # if user clicks on the same sector again, deselect it
+          state$state <- list(
+            id = app_states$STATE_NOTHING_SELECTED,
+            store = list()
+          )
+        } else {
+          selected_mb <- input$map_onclick$props$cd_setor
+
+          # change the app state
+          state$state <- list(
+            id = app_states$STATE_MB_SELECTED,
+            store = list(selected_mb = selected_mb, event_source = "map")
+          )
+        }
+      } else {
+        selected_mb <- input$map_onclick$props$cd_setor
+
+        # change the app state
+        state$state <- list(
+          id = app_states$STATE_MB_SELECTED,
+          store = list(selected_mb = selected_mb, event_source = "map")
+        )
+      }
+
     })
 
     # Highlight map -----------------------------------------------------------
 
     # highlighted meshblocks after map click
     d_highlighted_mb <- reactive({
-      req(state$state$id == STATE_MB_SELECTED)
+      req(state$state$id == app_states$STATE_MB_SELECTED)
 
       # obter distrito do setor selecionado
       cd_dist <- setores |>
@@ -118,7 +141,7 @@ mod_sim_map_server <- function(id, state){
     # redraw map on map click
     observeEvent(d_highlighted_mb(), {
       # only highlight map if app is in STATE_MB_SELECTED
-      req(state$state$id == STATE_MB_SELECTED)
+      req(state$state$id == app_states$STATE_MB_SELECTED)
 
       # extract highlighted shapes
       # bbox <- sf::st_bbox(d_highlighted_mb())
@@ -139,7 +162,7 @@ mod_sim_map_server <- function(id, state){
 
     # delete all map highlight if the app state changes to STATE_NOTHING_SELECTED
     observeEvent(state$state, {
-      req(state$state$id == STATE_NOTHING_SELECTED)
+      req(state$state$id == app_states$STATE_NOTHING_SELECTED)
       mapboxer::mapboxer_proxy(ns("map")) |>
         mapboxer::set_data(data = setores[0,], source_id = "highlight-mb") |>
         mapboxer::set_data(data = setores[0,], source_id = "selected-mb") |>

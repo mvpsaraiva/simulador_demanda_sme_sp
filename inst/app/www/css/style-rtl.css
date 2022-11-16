@@ -1531,10 +1531,22 @@ Google map
   width: 100%;
 }
 
+/* -------------------------------------------------------------
 #map {
   height: 100%;
   width: 100%;
 }
+------------------------------------------------------------- */
+
+#map {
+       height: calc(100vh - 57px) !important;
+       width: calc(100vw - 73.594px) !important;
+     }
+
+.wrapper {
+       overflow-x: hidden;
+       overflow-y: auto;
+     }
 
 #map img {
   max-width: none;
