@@ -10,9 +10,9 @@
 mod_sim_school_ui <- function(id){
   ns <- NS(id)
   tagList(
-    fluidRow(
+    # fluidRow(
       uiOutput(ns("school_details"))
-    )
+    # )
   )
 }
 
@@ -23,6 +23,10 @@ mod_sim_school_server <- function(id, state){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
 
+    escola <- reactive({
+      prepare_school_data(escolas, state$school_selected)
+    })
+
     # Headline ----------------------------------------------------------------
 
     output$school_details <- renderUI({
@@ -31,48 +35,37 @@ mod_sim_school_server <- function(id, state){
       if (state$school_selected == -1) {
         # no school selected
         div(
-          style = "margin: 10px; padding: 10px; height: 90vh; overflow-y: auto",
+          style = "margin: 10px; padding: 10px; height: 100%; overflow-y: auto",
           tagList(
-            h4("Nenhuma escola selecionada", class = "tile-headline"),
-            # h5(state$dre, class = "tile-subheadline")
-            hr(),
-
-            div(
-              style = "margin: 0 10px 0 10px; padding: 0 10px 0 10px; height: 100px; float: right",
-              actionButton(ns("btn_rodar_simulacao"), label = "Rodar Simulação >>>")
-            )
+            h4("Nenhuma escola selecionada", class = "tile-headline")
           )
         )
 
       } else {
         # build ui with school details
 
-        escola <- prepare_school_data(escolas, state$school_selected)
+        # escola <- prepare_school_data(escolas, state$school_selected)
         deficit_setor <- prepare_sector_deficit_data(escolas, state$school_selected)
         deficit_distrito <- prepare_district_deficit_data(escolas, state$school_selected)
 
-        div(
-          style = "margin: 10px; padding: 10px; height: 90vh; overflow-y: auto",
-          tagList(
-            h4(paste0("Déficit por Distrito - ", escola$nm_distrito[1]), class = "tile-headline"),
-            # h5(escola$nm_distrito[1], class = "tile-headline"),
-            renderTable({deficit_distrito}, colnames = FALSE, width = "100%"),
+        tagList(
+          div(
+            style = "margin: 10px; padding: 10px; overflow-y: auto",
+            tagList(
+              h4(paste0("Déficit por Distrito - ", escola()$nm_distrito[1]), class = "tile-headline"),
+              renderTable({deficit_distrito}, colnames = FALSE, width = "100%"),
 
-            h4(paste0("Déficit por Setor - ", escola$cd_setor[1]), class = "tile-headline"),
-            # h5(, class = "tile-headline"),
-            renderTable({deficit_setor}, colnames = FALSE, width = "100%"),
+              h4(paste0("Déficit por Setor - ", escola()$cd_setor[1]), class = "tile-headline"),
+              renderTable({deficit_setor}, colnames = FALSE, width = "100%"),
 
-            h4(escola$no_entidade[1], class = "tile-headline"),
-            h5(paste0(escola$co_entidade[1], " | ", escola$ds_endereco[1]), class = "tile-subheadline"),
-            renderTable({ escola |> dplyr::select(info, valor)}, colnames = FALSE, width = "100%"),
-
-            actionButton(ns("btn_edit_school"), label = "Editar Capacidade da Escola"),
-
-            hr(),
-
+              # dados da escola
+              h4(escola()$no_entidade[1], class = "tile-headline"),
+              h5(paste0(escola()$co_entidade[1], " | ", escola()$ds_endereco[1]), class = "tile-subheadline"),
+              renderTable({ escola() |> dplyr::select(info, valor)}, colnames = FALSE, width = "100%"),
+            ),
             div(
-              style = "height: 100px; float: right",
-              actionButton(ns("btn_run_simulation"), label = "Rodar Simulação >>>")
+              style = "margin: auto; padding: auto; height: 50px; align: center;",
+              actionButton(ns("btn_edit_school"), label = "Editar Capacidade da Escola")
             )
           )
         )
@@ -80,58 +73,72 @@ mod_sim_school_server <- function(id, state){
     })
 
 
-  observeEvent(input$btn_edit_school, {
-    showModal(modalDialog(
-      size = "l",
-    ))
-  })
+# Edição da escola --------------------------------------------------------
 
-  # ui_edit_school <- function() {
-  #   escola <- prepare_school_data(escolas, state$school_selected)
-  #
-  #   escola
-  #
-  #   fluidRow(
-  #     div(
-  #       h4(escola$no_entidade[1], class = "tile-headline"),
-  #       h5(paste0(escola$co_entidade[1], " | ", escola$ds_endereco[1]), class = "tile-subheadline"),
-  #       renderTable({ escola |> dplyr::select(info, valor)}, colnames = FALSE, width = "100%"),
-  #     )
-  #   ),
-  #   fluidRow(
-  #     column(
-  #       6,
-  #       h4("Capacidade da Escola", class = "tile-headline")
-  #     ),
-  #     column(
-  #       6,
-  #       h4("Capacidade Ampliada", class = "tile-headline")
-  #     ),
-  #   ),
-  #   fluidRow(
-  #     column(
-  #       width = 6,
-  #
-  #
-  #            ),
-  #   ),
-  #
-  #
-  #
-  #
-  #   tagList(
-  #
-  #   )
+    observeEvent(input$btn_edit_school, {
+      req(escola())
 
-  # }
+      # carregar informações da escola a ser editata
+      state$edit_school <- list(
+        co_entidade = escola()$co_entidade[1],
+        no_entidade = escola()$no_entidade[1],
 
+        orig_mat_creche = escola()$qt_mat_inf_cre[1],
+        nova_mat_creche = escola()$qt_mat_inf_cre[1],
 
+        orig_mat_pre = escola()$qt_mat_inf_pre[1],
+        nova_mat_pre = escola()$qt_mat_inf_pre[1],
+
+        orig_mat_fund_ai = escola()$qt_mat_fund_ai[1],
+        nova_mat_fund_ai = escola()$qt_mat_fund_ai[1],
+
+        orig_mat_fund_af = escola()$qt_mat_fund_af[1],
+        nova_mat_fund_af = escola()$qt_mat_fund_af[1]
+      )
+
+      # se a escola já foi modificada nesta seção, carregar esses dados
+      school_mod <- state$school_mod |>
+        dplyr::filter(co_entidade == escola()$co_entidade[1])
+
+      if (nrow(school_mod) > 0) {
+        state$edit_school$nova_mat_creche <- school_mod$nova_mat_creche
+        state$edit_school$nova_mat_pre <- school_mod$nova_mat_pre
+        state$edit_school$nova_mat_fund_ai <- school_mod$nova_mat_fund_ai
+        state$edit_school$nova_mat_fund_af <- school_mod$nova_mat_fund_af
+      }
+
+      showModal(modalDialog(
+        size = "s",
+        easyClose = TRUE,
+        mod_sim_edit_school_ui("sim_edit_school"),
+        footer = tagList(
+          modalButton("Cancelar"),
+          actionButton(ns("btn_save_changes"), "Salvar")
+        )
+      ))
+    })
+
+    observeEvent(input$btn_save_changes, {
+      # dataframe no formato da tabela de modificações
+      escolas_mod = data.frame(co_entidade = state$edit_school$co_entidade,
+                               no_entidade = state$edit_school$no_entidade,
+                               orig_mat_creche = state$edit_school$orig_mat_creche,
+                               nova_mat_creche = state$edit_school$nova_mat_creche,
+
+                               orig_mat_pre = state$edit_school$orig_mat_pre,
+                               nova_mat_pre = state$edit_school$nova_mat_pre,
+
+                               orig_mat_fund_ai = state$edit_school$orig_mat_fund_ai,
+                               nova_mat_fund_ai = state$edit_school$nova_mat_fund_ai,
+
+                               orig_mat_fund_af = state$edit_school$orig_mat_fund_af,
+                               nova_mat_fund_af = state$edit_school$nova_mat_fund_af
+      )
+
+      state$school_mod <- rbind(state$school_mod, escolas_mod)
+
+      removeModal()
+    })
 
   })
 }
-
-## To be copied in the UI
-# mod_sim_school_ui("sim_school_1")
-
-## To be copied in the server
-# mod_sim_school_server("sim_school_1")

@@ -11,7 +11,7 @@ mod_sim_map_ui <- function(id){
   ns <- NS(id)
   tagList(
     # tags$style(type = "text/css", "#map {height: calc(100vh - 80px) !important;}"),
-    mapboxer::mapboxerOutput(ns("map"), height = "90vh")
+    mapboxer::mapboxerOutput(ns("map"), height = "100%")
     # uiOutput(ns("selected_area"))
   )
 }

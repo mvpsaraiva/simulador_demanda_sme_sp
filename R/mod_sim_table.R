@@ -10,11 +10,7 @@
 mod_sim_table_ui <- function(id){
   ns <- NS(id)
   tagList(
-    div(
-
-      # style = "margin: 5px -5px 0 -5px; height: calc(100vh - 10px)",
-      reactable::reactableOutput(ns("table_schools"), height = "90vh")
-    )
+    reactable::reactableOutput(ns("table_schools"), width = "100%", height = "100%")
   )
 }
 
@@ -97,19 +93,23 @@ mod_sim_table_server <- function(id, state){
         compact = TRUE,
         defaultColDef = reactable::colDef(minWidth = 30, footerStyle = "font-weight: bold"),
         highlight = TRUE,
-        defaultPageSize = round((state$window_height - 345) / 31),
+        # selection = "single",
+        defaultPageSize = round((state$window_height - 220) / 31),  # 345
         paginationType = "simple",
         searchable = TRUE,
         wrap = FALSE,
         onClick = onclick_js,
         defaultSorted = list(cd_setor = "asc", no_entidade = "asc"),
+        theme = reactable::reactableTheme(
+          rowSelectedStyle = list(backgroundColor = "#eee", boxShadow = "inset 2px 0 0 0 #ffa62d")
+        ),
 
         columns = list(
           cd_setor = reactable::colDef(name = "Setor", filterable = TRUE),
           nm_distrito = reactable::colDef(name = "Distrito", show = FALSE),
           co_entidade = reactable::colDef(name = "Código (MEC)", filterable = TRUE, show = FALSE),
           no_entidade = reactable::colDef(name = "Nome", filterable = TRUE, class = "area-link", minWidth = 150),
-          tp_categoria = reactable::colDef(name = "Rede", filterable = TRUE),
+          tp_categoria = reactable::colDef(name = "Rede", filterable = TRUE, minWidth = 35),
           qt_mat_inf_cre = reactable::colDef(name = "CRE", footer = footer_total),# header = icon("car")),
           qt_mat_inf_pre = reactable::colDef(name = "PRE", footer = footer_total),# header = icon("train")),
           qt_mat_fund_ai = reactable::colDef(name = "F I", footer = footer_total),# header = icon("walking")),
