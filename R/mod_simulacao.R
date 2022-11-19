@@ -608,10 +608,10 @@ mod_simulacao_server <- function(id, db_con) {
 
 
       # limpar memória e UI
-      rm(hexgrid)
-      rm(populacao_por_hex)
-      rm(escolas_df)
-      rm(travel_times)
+      # rm(hexgrid)
+      # rm(populacao_por_hex)
+      # rm(escolas_df)
+      # rm(travel_times)
 
       modificacoes$escolas <- novo_escolas_mod_vazio()
 

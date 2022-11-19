@@ -74,14 +74,20 @@ mod_simulation_server <- function(id, state){
       )
 
       # criar novo cenário de simulação
-      hexgrid <- read_sf_from_db(db_con, "hexgrid")
+      # dados:
+      # hexgrid
+      # populacao_por_hex
+      # escolas
+      # ttm
 
-      populacao_por_hex <- DBI::dbReadTable(db_con, "populacao_por_hex") |>
-        dplyr::filter(ano %in% c(2020, 2035, 2045))
-
-      escolas_df <- DBI::dbReadTable(db_con, "escolas")
-
-      travel_times <- DBI::dbReadTable(db_con, "travel_times")
+      # hexgrid <- read_sf_from_db(db_con, "hexgrid")
+      #
+      # populacao_por_hex <- DBI::dbReadTable(db_con, "populacao_por_hex") |>
+      #   dplyr::filter(ano %in% c(2020, 2035, 2045))
+      #
+      # escolas_df <- DBI::dbReadTable(db_con, "escolas")
+      #
+      # travel_times <- DBI::dbReadTable(db_con, "travel_times")
 
       cenario <- list(
         id = uuid::UUIDgenerate(),
