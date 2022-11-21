@@ -1,4 +1,4 @@
-#' sim_run UI Function
+#' res_summary UI Function
 #'
 #' @description A shiny Module.
 #'
@@ -7,62 +7,43 @@
 #' @noRd
 #'
 #' @importFrom shiny NS tagList
-mod_sim_run_ui <- function(id){
+mod_res_summary_ui <- function(id){
   ns <- NS(id)
   tagList(
-
-    gridlayout::grid_container(
-      layout = c("       800px  400px      ",
-                 "600px  table  scenario "
-      ),
-      gridlayout::grid_card(
-        "table",
-        h4("Tabela de modificações", class = "tile-headline"),
-        reactable::reactableOutput(ns("table_modified_schools"), width = "100%", height = "100%")
-      ),
-      gridlayout::grid_card(
-        "scenario",
-        h4("Cenário", class = "tile-headline"),
-        textInput(inputId = ns("cenario_nome"),
-                  label = "Cenário",
-                  value = "",
-                  placeholder = "Cenário",
-                  width = "100%"),
-        textInput(inputId = ns("cenario_autor"),
-                  label = "Autor",
-                  placeholder = "Autor",
-                  width = "100%"),
-        textAreaInput(inputId = ns("cenario_descricao"),
-                      label = "Descricao",
-                      placeholder = "Descrição do cenário",
-                      width="100%", height = "400px")
-      )
-    )
+    reactable::reactableOutput(ns("table_modified_schools"), width = "100%", height = "100%")
   )
-
 }
 
-#' sim_run Server Functions
+#' res_summary Server Functions
 #'
 #' @noRd
-mod_sim_run_server <- function(id, state){
+mod_res_summary_server <- function(id, state){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
 
     school_mod <- reactive({
-      state$school_mod
+      req(state$scenario_selected)
+
+      mod_df <- data.frame()
+
+      if (DBI::dbExistsTable(state$db_con, "modificacoes")) {
+        mod_df <- DBI::dbGetQuery(state$db_con,
+                                  sprintf("SELECT * FROM modificacoes WHERE id_cenario = %d",
+                                          state$scenario_selected)
+                                  )
+
+        mod_df <- dplyr::left_join(mod_df, escolas, by = c("co_entidade", "no_entidade")) |>
+          dplyr::select(nm_dre, nm_distrito, cd_setor, co_entidade, no_entidade, tp_categoria, tmi_metro,
+                        orig_mat_creche, nova_mat_creche, orig_mat_pre,nova_mat_pre,
+                        orig_mat_fund_ai, nova_mat_fund_ai, orig_mat_fund_af, nova_mat_fund_af) |>
+          dplyr::arrange(nm_dre, nm_distrito, cd_setor, no_entidade)
+      }
+
+      return(mod_df)
     })
 
-    observeEvent(input$cenario_nome, {
-      state$edit_scenario$name <- input$cenario_nome
-    })
-    observeEvent(input$cenario_autor, {
-      state$edit_scenario$author <- input$cenario_autor
-    })
-    observeEvent(input$cenario_descricao, {
-      state$edit_scenario$description <- input$cenario_descricao
-    })
 
+# Modified schools --------------------------------------------------------
 
     footer_total <- function(values) format(sum(values, na.rm = TRUE),
                                             big.mark = ".", decimal.mark = ",")
@@ -77,17 +58,24 @@ mod_sim_run_server <- function(id, state){
         highlight = TRUE,
         defaultPageSize = round((state$window_height - 220) / 31),  # 345
         paginationType = "simple",
-        searchable = TRUE,
+        searchable = FALSE,
         wrap = FALSE,
         # onClick = onclick_js,
-        defaultSorted = list(no_entidade = "asc"),
+        defaultSorted = list(nm_dre = "asc", nm_distrito = "asc", cd_setor = "asc", no_entidade = "asc"),
+        # groupBy = c("nm_dre", "nm_distrito", "cd_setor"),
         # theme = reactable::reactableTheme(
         #   rowSelectedStyle = list(backgroundColor = "#eee", boxShadow = "inset 2px 0 0 0 #ffa62d")
         # ),
 
         columns = list(
-          co_entidade = reactable::colDef(name = "Código (MEC)", filterable = FALSE, show = FALSE),
-          no_entidade = reactable::colDef(name = "Nome", filterable = FALSE, class = "area-link", minWidth = 150),
+          nm_dre = reactable::colDef(name = "DRE", filterable = TRUE, show = TRUE),
+          nm_distrito = reactable::colDef(name = "Distrito", filterable = TRUE, show = TRUE),
+          cd_setor = reactable::colDef(name = "Setor", filterable = TRUE, show = TRUE),
+          co_entidade = reactable::colDef(name = "Código (MEC)", filterable = TRUE, show = FALSE),
+          no_entidade = reactable::colDef(name = "Escola", filterable = TRUE, class = "area-link", minWidth = 150),
+          tp_categoria = reactable::colDef(name = "Rede", filterable = TRUE, show = TRUE),
+          tmi_metro = reactable::colDef(name = "Metrô (min)", filterable = FALSE, show = TRUE),
+
           orig_mat_creche = reactable::colDef(name = "CRE orig", footer = footer_total),
           nova_mat_creche = reactable::colDef(name = "CRE nova", footer = footer_total),
 
@@ -112,8 +100,11 @@ mod_sim_run_server <- function(id, state){
 
     })
 
-
-
   })
 }
 
+## To be copied in the UI
+# mod_res_summary_ui("res_summary_1")
+
+## To be copied in the server
+# mod_res_summary_server("res_summary_1")

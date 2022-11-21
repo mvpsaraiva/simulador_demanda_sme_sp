@@ -35,20 +35,15 @@ app_server <- function(input, output, session) {
 
     school_selected = -1,
     edit_school = list(),
-    school_mod = data.frame(co_entidade = numeric(),
-                            no_entidade = character(),
-                            orig_mat_creche = numeric(),
-                            nova_mat_creche = numeric(),
 
-                            orig_mat_pre = numeric(),
-                            nova_mat_pre = numeric(),
-
-                            orig_mat_fund_ai = numeric(),
-                            nova_mat_fund_ai = numeric(),
-
-                            orig_mat_fund_af = numeric(),
-                            nova_mat_fund_af = numeric()
+    scenario_selected = -1,
+    edit_scenario = list(
+      name = "",
+      author = "",
+      description = ""
     ),
+
+    school_mod= novo_escolas_mod_vazio(),
 
     window_height = 800,
     map_id = NULL,
@@ -57,7 +52,6 @@ app_server <- function(input, output, session) {
   )
 
   # update the app state when browser window is re-sized
-  # observeEvent(input$window_height, app_state$window_height <- input$window_height)
   observeEvent(input$window_size, app_state$window_height <- input$window_size$height)
 
   # Your application server logic
@@ -70,11 +64,11 @@ app_server <- function(input, output, session) {
   mod_sim_school_server("sim_school", app_state)
   mod_sim_edit_school_server("sim_edit_school", app_state)
   mod_sim_run_server("sim_run", app_state)
-  #
-#   mod_simulation_server("simulacao", con)
-#   mod_simulation_server("simulacao", con)
-#
-#   mod_simulacao_server("simulacao_1", con)
-#   mod_resultados_server("resultados_1", con)
 
+  mod_results_server("results", app_state)
+  mod_res_selector_server("res_selector", app_state)
+  mod_res_summary_server("res_summary", app_state)
+  mod_res_summary_area_server("res_summary_area", app_state)
+  mod_res_deficit_setor_server("res_deficit_setor", app_state)
+  mod_res_deficit_distrito_server("res_deficit_distrito", app_state)
 }

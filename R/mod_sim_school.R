@@ -11,7 +11,10 @@ mod_sim_school_ui <- function(id){
   ns <- NS(id)
   tagList(
     # fluidRow(
+    div(
+      style = "margin: 10px; padding: 10px; height: 100%; overflow-y: auto",
       uiOutput(ns("school_details"))
+    )
     # )
   )
 }
@@ -34,12 +37,12 @@ mod_sim_school_server <- function(id, state){
 
       if (state$school_selected == -1) {
         # no school selected
-        div(
-          style = "margin: 10px; padding: 10px; height: 100%; overflow-y: auto",
+        # div(
+        #   style = "margin: 10px; padding: 10px; height: 100%; overflow-y: auto",
           tagList(
             h4("Nenhuma escola selecionada", class = "tile-headline")
           )
-        )
+        # )
 
       } else {
         # build ui with school details
@@ -50,7 +53,7 @@ mod_sim_school_server <- function(id, state){
 
         tagList(
           div(
-            style = "margin: 10px; padding: 10px; overflow-y: auto",
+            # style = "margin: 10px; padding: 10px; overflow-y: auto",
             tagList(
               h4(paste0("Déficit por Distrito - ", escola()$nm_distrito[1]), class = "tile-headline"),
               renderTable({deficit_distrito}, colnames = FALSE, width = "100%"),
@@ -64,14 +67,13 @@ mod_sim_school_server <- function(id, state){
               renderTable({ escola() |> dplyr::select(info, valor)}, colnames = FALSE, width = "100%"),
             ),
             div(
-              style = "margin: auto; padding: auto; height: 50px; align: center;",
+              style = "margin: auto;height: 50px; display: flex; justify-content: center; align-items: center;",
               actionButton(ns("btn_edit_school"), label = "Editar Capacidade da Escola")
             )
           )
         )
       }
     })
-
 
 # Edição da escola --------------------------------------------------------
 

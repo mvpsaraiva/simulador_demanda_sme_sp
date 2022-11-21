@@ -54,13 +54,14 @@ app_ui <- function(request) {
       # ),
       tabPanel(
         title = "Simulação",
-        style = "margin: 0; padding: 0; height: calc(100vh - 100px)",
+        style = "margin: 0; padding: 0; height: 100vh",
         mod_simulation_ui("simulation"),
+      ),
+      tabPanel(
+        title = "Resultados",
+        style = "margin: 0; padding: 0; height: 100vh",
+        mod_results_ui("results")
       )
-      # tabPanel(
-      #   title = "Resultados",
-      #   mod_resultados_ui("resultados_1")
-      # )
     ))
 }
 

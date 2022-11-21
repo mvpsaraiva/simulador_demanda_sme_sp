@@ -12,7 +12,7 @@ run_app <- function(
   options = list(),
   enableBookmarking = NULL,
   uiPattern = "/",
-  db_path = "data/demanda_sme_v4.db",
+  db_path = "data/demanda_sme_simulations.db",
   mapbox_token = "pk.eyJ1IjoibXZwc2FyYWl2YSIsImEiOiJjbGFpaG9kdmMwMnE5M29wOHV2MGM4Y3B2In0.sl-zkob04cCpUiu0TxneTg",
   ...
 ) {

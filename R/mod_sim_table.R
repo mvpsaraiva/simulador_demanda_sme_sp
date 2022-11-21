@@ -69,18 +69,23 @@ mod_sim_table_server <- function(id, state){
     })
 
     ## Render table -------------------------------
+    selected_row <- reactive({
+      req(df_escolas())
 
-    onclick_js <- reactable::JS(
-      glue::glue(
-        "function(rowInfo, colInfo) {
-          // Send the click event to Shiny, which will be available in input$show_details
-          // Note that the row index starts at 0 in JavaScript, so we add 1
-          if (window.Shiny) {
-            Shiny.setInputValue('<<< ns('show_details') >>>', { index: rowInfo.index + 1, rnd: Math.random() })
-          }
+      reactable::getReactableState("table_schools", "selected")
+    })
 
-        }", .open = "<<<", .close = ">>>")
-    )
+    observeEvent(selected_row(), {
+      row_index <- selected_row()
+
+      if (is.null(row_index)) {
+        state$school_selected <- -1
+      } else {
+        selected_school <- df_escolas()[row_index,]
+        state$school_selected <- selected_school$co_entidade[1]
+      }
+    })
+
 
     footer_total <- function(values) format(sum(values, na.rm = TRUE),
                                             big.mark = ".", decimal.mark = ",")
@@ -93,18 +98,19 @@ mod_sim_table_server <- function(id, state){
         compact = TRUE,
         defaultColDef = reactable::colDef(minWidth = 30, footerStyle = "font-weight: bold"),
         highlight = TRUE,
-        # selection = "single",
+        selection = "single",
         defaultPageSize = round((state$window_height - 220) / 31),  # 345
         paginationType = "simple",
         searchable = TRUE,
         wrap = FALSE,
-        onClick = onclick_js,
+        onClick = "select", # onclick_js,
         defaultSorted = list(cd_setor = "asc", no_entidade = "asc"),
         theme = reactable::reactableTheme(
           rowSelectedStyle = list(backgroundColor = "#eee", boxShadow = "inset 2px 0 0 0 #ffa62d")
         ),
 
         columns = list(
+          .selection = reactable::colDef(show = FALSE),
           cd_setor = reactable::colDef(name = "Setor", filterable = TRUE),
           nm_distrito = reactable::colDef(name = "Distrito", show = FALSE),
           co_entidade = reactable::colDef(name = "Código (MEC)", filterable = TRUE, show = FALSE),
@@ -126,14 +132,14 @@ mod_sim_table_server <- function(id, state){
       )
     })
 
-    observeEvent(input$show_details, {
-      req(df_escolas(), input$show_details)
-
-      selected_row <- df_escolas()[input$show_details$index,]
-
-      # change the app state
-      state$school_selected <- selected_row$co_entidade[1]
-    })
+    # observeEvent(input$show_details, {
+    #   req(df_escolas(), input$show_details)
+    #
+    #   selected_row <- df_escolas()[input$show_details$index,]
+    #
+    #   # change the app state
+    #   state$school_selected <- selected_row$co_entidade[1]
+    # })
 
 
   })

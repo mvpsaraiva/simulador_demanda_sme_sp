@@ -32,11 +32,12 @@ mod_simulation_ui <- function(id){
         ),
         gridlayout::grid_card(
           "run",
-          actionButton(ns("btn_run_simulation"), "Rodar Simulação >>>")
+          div(
+            style = "margin: auto; padding: auto; height: 100%; display: flex; justify-content: center; align-items: center;",
+            actionButton(ns("btn_run_simulation"), "Rodar Simulação >>>")
+          )
         )
-
       )
-
     )
 
 }
@@ -74,31 +75,17 @@ mod_simulation_server <- function(id, state){
       )
 
       # criar novo cenário de simulação
-      # dados:
-      # hexgrid
-      # populacao_por_hex
-      # escolas
-      # ttm
-
-      # hexgrid <- read_sf_from_db(db_con, "hexgrid")
-      #
-      # populacao_por_hex <- DBI::dbReadTable(db_con, "populacao_por_hex") |>
-      #   dplyr::filter(ano %in% c(2020, 2035, 2045))
-      #
-      # escolas_df <- DBI::dbReadTable(db_con, "escolas")
-      #
-      # travel_times <- DBI::dbReadTable(db_con, "travel_times")
-
+      # consolidar elementos necessários à simulação em uma lista
       cenario <- list(
-        id = uuid::UUIDgenerate(),
+        id = -1,
         data_criacao = Sys.time(),
-        nome = input$cenario_nome,
-        autor = input$cenario_autor,
-        descricao = input$cenario_descricao,
-        escolas_mod = modificacoes$escolas,
-        escolas = escolas_df,
+        nome = state$edit_scenario$name, #  input$cenario_nome,
+        autor = state$edit_scenario$author, #  input$cenario_autor,
+        descricao = state$edit_scenario$description, #  input$cenario_descricao,
+        escolas_mod = state$school_mod,
+        escolas = escolas,
         populacao = populacao_por_hex,
-        ttm = travel_times,
+        ttm = ttm,
         hexgrid = hexgrid
       )
 
@@ -106,33 +93,15 @@ mod_simulation_server <- function(id, state){
       cenario_res <- create_new_scenario(cenario)
 
       # persistir cenário no banco de dados
-      persist_scenario(db_con, cenario_res)
-
-      # escolas_mod = data.frame(co_entidade = 35000024,
-      #                          no_entidade = "GAVIAO PEIXOTO BRIGADEIRO",
-      #                          orig_mat_creche = 10,
-      #                          nova_mat_creche = 20,
-      #
-      #                          orig_mat_pre = 10,
-      #                          nova_mat_pre = 40,
-      #
-      #                          orig_mat_fund_ai = 10,
-      #                          nova_mat_fund_ai = 50,
-      #
-      #                          orig_mat_fund_af = 10,
-      #                          nova_mat_fund_af = 60
-      # )
-
+      persist_scenario(state$db_con, cenario_res)
 
       # limpar memória e UI
-      rm(hexgrid)
-      rm(populacao_por_hex)
-      rm(escolas_df)
-      rm(travel_times)
-
-      modificacoes$escolas <- novo_escolas_mod_vazio()
-
-      # updateTabsetPanel(session, "tab_simulacao", selected = "Escolas")
+      state$school_mod <- novo_escolas_mod_vazio()
+      state$edit_scenario = list(
+        name = "",
+        author = "",
+        description = ""
+      )
 
       removeModal()
 

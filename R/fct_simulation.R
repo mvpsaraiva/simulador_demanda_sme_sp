@@ -20,7 +20,7 @@ create_new_scenario <- function(data) {
   matriculas_por_hex <- calcular_matriculas_por_hex(escolas_df)
 
   # calcular bfca
-  bfca_tempos_viagem <- c(15, 30)
+  bfca_tempos_viagem <- c(15)
   bfca_anos <- c(2020, 2035, 2045)
   bfca_series <- c("creche", "pre", "anos_iniciais", "anos_finais")
 
@@ -206,16 +206,18 @@ calcular_bfca <- function(hexgrid, demanda_por_hex, matriculas_por_hex, travel_t
     dplyr::left_join(access_bfca_df, by = c("id_hex" = "id")) |>
     dplyr::rename(bfca = mat_publica) |>
     cbind(params_df) |>
-    dplyr::mutate(cd_distrito = as.numeric(cd_distrito), cutoff = tempo_maximo_viagem)
+    dplyr::mutate(cutoff = tempo_maximo_viagem)
 
   access_hex_expandida <- access_hex |>
     dplyr::left_join(demanda, by = c("id_hex", "ano", "faixa_idade", "etapa", "serie")) |>
-    dplyr::left_join(matriculas, by = c("id_hex", "faixa_idade", "etapa", "serie"))
+    dplyr::left_join(matriculas, by = c("id_hex", "faixa_idade", "etapa", "serie")) |>
+    dplyr::left_join(hexgrid_setor_lookup, by = "id_hex") |>
+    dplyr::left_join(setores |> sf::st_set_geometry(NULL), by = "cd_setor")
 
 
   ## seleção das colunas relevantes
   access_hex <- access_hex_expandida |>
-    dplyr::select(id_hex, cd_distrito, nr_distrito, nm_distrito,
+    dplyr::select(id_hex, nr_distrito, nm_distrito,
            cd_dre, cd_setor, ano, faixa_idade, etapa, serie,
            populacao = populacao_esc_publica_hex, matriculas = mat_publica,
            cutoff, bfca) |>
@@ -242,7 +244,7 @@ calcular_deficit_bfca_setor <- function(bfca) {
 
   # transformar BFCA em medida de déficit / superávit
   def_bfca_setor <- bfca |>
-    dplyr::group_by(cd_dre, cd_distrito, nr_distrito, nm_distrito, cd_setor,
+    dplyr::group_by(cd_dre, nr_distrito, nm_distrito, cd_setor,
              ano, faixa_idade, etapa, serie, cutoff) |>
     dplyr::mutate(vagas_acessiveis = round(populacao * bfca),
            populacao = round(populacao),
@@ -261,7 +263,7 @@ calcular_deficit_bfca_distrito <- function(bfca) {
 
   # transformar BFCA em medida de déficit / superávit
   def_bfca_distrito <- bfca |>
-    dplyr::group_by(cd_dre, cd_distrito, nr_distrito, nm_distrito,
+    dplyr::group_by(cd_dre, nr_distrito, nm_distrito,
              ano, faixa_idade, etapa, serie, cutoff) |>
     dplyr::mutate(vagas_acessiveis = round(populacao * bfca),
            populacao = round(populacao),

@@ -8,9 +8,10 @@
 
 # Material card -----------------------------------------------------------
 
-material_card <- function(..., header = NULL, bgcolor = "#191a1a") {
+material_card <- function(..., header = NULL, bgcolor = "#fff") {
   div(
     class = "card",
+    style = "height: 100%:",
     header,
     div(class = "card-content", ..., style = sprintf("background-color: %s", bgcolor))
   )

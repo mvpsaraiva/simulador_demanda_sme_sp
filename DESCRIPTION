@@ -8,6 +8,8 @@ Description: Simulador de demanda por escolas de educação infantil e
     Secretaria Municipal de Educação (SME SP) em parceria com o Banco
     Interamericano de Desenvolvimento (BID).
 License: MIT + file LICENSE
+Depends: 
+    R (>= 2.10)
 Imports: 
     accessibility,
     colourvalues,
@@ -19,12 +21,17 @@ Imports:
     gridlayout,
     htmltools,
     janitor,
+    jsonlite,
+    mapboxer,
     mapdeck,
     piggyback,
     purrr,
+    reactable,
     RSQLite,
+    scales,
     sf,
     shiny (>= 1.6.0),
+    shinyWidgets,
     stringr,
     tidyr,
     uuid,
@@ -37,5 +44,3 @@ Encoding: UTF-8
 Language: en-US
 LazyData: true
 RoxygenNote: 7.2.1
-Depends: 
-    R (>= 2.10)

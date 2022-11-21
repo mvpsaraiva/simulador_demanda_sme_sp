@@ -664,8 +664,9 @@ a,
   -ms-touch-action: manipulation;
   touch-action: manipulation;
   cursor: pointer;
+  color: #444;
   background-image: none;
-  background-color: #ddd;
+  background-color: #eee;
   border: 1px solid transparent;
   padding: 6px;
   /* font-size: 14px; */
@@ -835,7 +836,7 @@ a,
 /* Forms common style */
 .form-control {
   /* font-family: "Roboto Condensed", sans-serif; */
-  text-transform: uppercase;
+  /* text-transform: uppercase; */
   /* letter-spacing: 2px; */
   font-size: 10px;
   height: 33px;

@@ -43,9 +43,9 @@ mod_sim_map_server <- function(id, state){
 
     # Map ---------------------------------------------------------------------
 
-    tooltip_mb <- "<div><b>Distrito: </b>{{nm_distrito}}</div> <div><b>Setor: </b>{{cd_setor}}</div>"
-    tooltip_selected_mb <- "<div><b>Distrito: </b>{{nm_distrito}}</div> <div><b>Setor: </b>{{cd_setor}}</div>"
-    tooltip_highlighted_mb <- "<div><b>Distrito: </b>{{nm_distrito}}</div> <div><b>Setor: </b>{{cd_setor}}</div>"
+    tooltip_mb <- "<div><b>DRE: </b>{{nm_dre}}</div> <div><b>Distrito: </b>{{nm_distrito}}</div> <div><b>Setor: </b>{{cd_setor}}</div>"
+    tooltip_selected_mb <- "<div><b>DRE: </b>{{nm_dre}}</div> <div><b>Distrito: </b>{{nm_distrito}}</div> <div><b>Setor: </b>{{cd_setor}}</div>"
+    tooltip_highlighted_mb <- "<div><b>DRE: </b>{{nm_dre}}</div> <div><b>Distrito: </b>{{nm_distrito}}</div> <div><b>Setor: </b>{{cd_setor}}</div>"
 
     map_rendered <- reactiveVal(FALSE)
     output$map <- mapboxer::renderMapboxer({
