@@ -22,8 +22,13 @@ mod_simulation_ui <- function(id){
         gridlayout::grid_card(
           "map",
           tagList(
-            mod_sim_map_ui("sim_map"),
-            mod_sim_map_filter_ui("sim_map_filter")
+            # div(
+            #   style = "margins: 5px",
+
+              # mod_sim_map_filter_ui("sim_map_filter"),
+              # hr(),
+              mod_sim_map_ui("sim_map")
+            # )
           )
         ),
         gridlayout::grid_card(

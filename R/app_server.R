@@ -33,6 +33,8 @@ app_server <- function(input, output, session) {
     dre = app_states$INITIAL_DRE,
     state = list(id = app_states$STATE_NOTHING_SELECTED, store = list()),
 
+    centroid = c(-46.63306176720343, -23.548164364465265),
+
     school_selected = -1,
     edit_school = list(),
 

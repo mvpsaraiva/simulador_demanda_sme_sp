@@ -176,7 +176,13 @@ mod_res_deficit_setor_server <- function(id, state){
       state$map_id <- ns("map_deficit")
       sf_shape <- sector_deficit_sf()
 
-      mapboxer::mapboxer(style = "mapbox://styles/mapbox/light-v9", token = golem::get_golem_options("mapbox_token"))  |>
+      mapboxer::mapboxer(
+        style = "mapbox://styles/mapbox/light-v9",
+        token = golem::get_golem_options("mapbox_token"),
+        center = state$centroid,
+        zoom = 10,
+        minZoom = 8
+        )  |>
 
         # meshblock highlights
         mapboxer::add_fill_layer(
@@ -211,7 +217,9 @@ mod_res_deficit_setor_server <- function(id, state){
         # add_tooltips(layer_id = "highlight-bucket", tooltip = tooltip_highlighted_bucket) |>
         mapboxer::add_tooltips(layer_id = "selected-mb", tooltip = tooltip_selected_mb) |>
 
-        mapboxer::fit_bounds(sf::st_bbox(sf_shape))
+        mapboxer::fit_bounds(sf::st_bbox(sf_shape),
+                             options = list(options.easing = list(animate = FALSE))
+                             )
     })
 
 

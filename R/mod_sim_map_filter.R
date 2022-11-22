@@ -10,13 +10,10 @@
 mod_sim_map_filter_ui <- function(id){
   ns <- NS(id)
   tagList(
-    absolutePanel(
-      div(
-        style = "float: right",
-        shinyWidgets::pickerInput(ns("dre"), label = NULL, choices = NULL, width = "200px")
-      ),
-      top = "0", right = "0", width = "100%",
-      style = "padding: 0 7px 0 20px; margin-top: 6px;"
+    div(
+      # style = "float: right",
+      h4("Configurações do Mapa", class = "tile-headline"),
+      shinyWidgets::pickerInput(ns("dre"), label = NULL, choices = NULL, width = "200px")
     )
   )
 }
