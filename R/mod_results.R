@@ -28,7 +28,7 @@ mod_results_ui <- function(id){
       gridlayout::grid_card(
         "buttons",
         div(
-          actionButton(ns("load_results"), label = "Carregar detalhes"),
+          # actionButton(ns("load_results"), label = "Carregar detalhes"),
           downloadButton(ns("download_xlsx"), label = "Exportar resultados")
         )
       ),
