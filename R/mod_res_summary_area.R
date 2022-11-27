@@ -275,7 +275,6 @@ mod_res_summary_area_server <- function(id, state){
         mapboxer::fit_bounds(sf::st_bbox(sf_shape))
     })
 
-
     # redesenhar mapa caso a variável seja atualizada
     observeEvent(
       {

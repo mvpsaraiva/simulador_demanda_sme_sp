@@ -6,6 +6,10 @@
 #' @noRd
 app_server <- function(input, output, session) {
 
+  # mapbox token
+  token = golem::get_golem_options("mapbox_token")
+  mapdeck::set_token(token)
+
   ## check if database exists, and download it if not
   db_file <- golem::get_golem_options("db_path")
   if (!file.exists(db_file)) {
