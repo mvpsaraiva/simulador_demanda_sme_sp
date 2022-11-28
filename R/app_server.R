@@ -34,7 +34,8 @@ app_server <- function(input, output, session) {
 
   # initialise the app state with the default STATE_NOTHING_SELECTED
   app_state <- reactiveValues(
-    dre = app_states$INITIAL_DRE,
+    selected_dres = NULL,
+    selected_districts = NULL,
     state = list(id = app_states$STATE_NOTHING_SELECTED, store = list()),
 
     centroid = c(-46.63306176720343, -23.548164364465265),

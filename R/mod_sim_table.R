@@ -23,39 +23,40 @@ mod_sim_table_server <- function(id, state){
 
     # Area selection ----------------------------------------------------------
 
-    filter_choices <- reactive({
-      req(state$dre)
-
-      d <- setores |>
-        sf::st_set_geometry(NULL) |>
-        dplyr::select()
-
-      if (state$dre != app_states$INITIAL_DRE) {
-        d <- d |> filter(nm_dre == state$dre)
-      }
-
-      setNames(d$code, d$name)
-    })
+    # filter_choices <- reactive({
+    #   if (length(state$selected_dre) > 0) {
+    #
+    #   }
+    #
+    #   d <- setores |>
+    #     sf::st_set_geometry(NULL) |>
+    #     dplyr::select()
+    #
+    #   if (state$dre != app_states$INITIAL_DRE) {
+    #     d <- d |> filter(nm_dre == state$dre)
+    #   }
+    #
+    #   setNames(d$code, d$name)
+    # })
 
 
     # Tabela de escolas -------------------------------------------------------
 
     ## Filter data -------------------------------
     df_escolas <- reactive({
-      req(state$dre, state$state$id)
+      # req(state$state$id)
 
       # Todas as escolas
       d <- escolas
 
-      # Filtrar DRE
-      if (state$dre != app_states$INITIAL_DRE) {
+      # Filtrar DRE ou Distrito
+      if (length(state$selected_dres) > 0) {
         d <- d |>
-          dplyr::filter(nm_dre == state$dre)
+          dplyr::filter(nm_dre %in% state$selected_dres)
       }
-
-      if (state$state$id == app_states$STATE_MB_SELECTED) {
+      if (length(state$selected_districts) > 0) {
         d <- d |>
-          dplyr::filter(cd_setor == state$state$store$selected_mb)
+          dplyr::filter(nm_distrito %in% state$selected_districts)
       }
 
       # Limpar as colunas
