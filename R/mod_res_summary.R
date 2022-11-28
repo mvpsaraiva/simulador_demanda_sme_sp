@@ -60,6 +60,7 @@ mod_res_summary_server <- function(id, state){
         paginationType = "simple",
         searchable = FALSE,
         wrap = FALSE,
+        resizable = TRUE,
         # onClick = onclick_js,
         defaultSorted = list(nm_dre = "asc", nm_distrito = "asc", cd_setor = "asc", no_entidade = "asc"),
         # groupBy = c("nm_dre", "nm_distrito", "cd_setor"),

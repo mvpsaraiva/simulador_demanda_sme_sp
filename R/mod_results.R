@@ -12,14 +12,8 @@ mod_results_ui <- function(id){
   tagList(
     gridlayout::grid_container(
       layout = c("      280px         1fr    ",
-                 "150px instructions  content",
                  "1fr   table         content",
-                 "100px buttons       content"
-      ),
-      gridlayout::grid_card_text(
-        "instructions",
-        "Selecione um dos cenários de simulação na tabela ao lado, e explore os resultados nas abas acima: Por Distrito, Por Setor, e o mapeamento por Hexágonos.",
-        wrapping_tag = "p"
+                 "75px  buttons       content"
       ),
       gridlayout::grid_card(
         "table",
@@ -28,7 +22,7 @@ mod_results_ui <- function(id){
       gridlayout::grid_card(
         "buttons",
         div(
-          # actionButton(ns("load_results"), label = "Carregar detalhes"),
+          style = "margin: auto; padding: auto; height: 100%; display: flex; justify-content: center; align-items: center;",
           downloadButton(ns("download_xlsx"), label = "Exportar resultados")
         )
       ),

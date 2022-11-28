@@ -67,7 +67,6 @@ app_server <- function(input, output, session) {
   mod_simulation_server("simulation", app_state)
   mod_sim_table_server("sim_table", app_state)
   mod_sim_map_server("sim_map", app_state)
-  mod_sim_map_filter_server("sim_map_filter", app_state)
   mod_sim_school_server("sim_school", app_state)
   mod_sim_edit_school_server("sim_edit_school", app_state)
   mod_sim_run_server("sim_run", app_state)

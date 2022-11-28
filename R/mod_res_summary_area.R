@@ -17,6 +17,16 @@ mod_res_summary_area_ui <- function(id){
           style = "margins: 5px",
           h4("Configurações do Mapa", class = "tile-headline"),
 
+          # unidades espaciais
+          shinyWidgets::pickerInput(ns("unidade_espacial"),
+                                    label = "Divisão Espacial",
+                                    multiple = FALSE,
+                                    choices = list("Hexágonos" = "hexgrid",
+                                                   "Setores" = "setores_sme"),
+                                    # "Distritos" = "distritos"
+                                    selected = "setores_sme",
+                                    inline = TRUE,
+                                    width = "180px"),
           # etapa de ensino
           shinyWidgets::pickerInput(ns("filtro_etapa"),
                                     label = "Etapa de ensino",
@@ -27,15 +37,13 @@ mod_res_summary_area_ui <- function(id){
                                                 "Fundamental II"),
                                     selected = "Creche",
                                     inline = TRUE,
-                                    width = "200px"),
+                                    width = "180px"),
           shinyWidgets::pickerInput(ns("var_mapa"),
                                     label = "Mapear vagas",
-                                    choices = c("Atuais", "Projetadas", "Diferença"),
+                                    choices = c("Vagas Atuais", "Vagas Projetadas", "Diferença"),
                                     selected = "Diferença",
                                     inline = TRUE,
-                                    width = "200px"),
-          hr(),
-
+                                    width = "180px"),
           reactable::reactableOutput(ns("table_mod"), width = "100%", height = "calc(100vh - 100px)")
         )
       ),
@@ -43,7 +51,7 @@ mod_res_summary_area_ui <- function(id){
         width = 6,
         div(
           style = "margins: 5px",
-          mapboxer::mapboxerOutput(ns("map_mod"), height = "calc(100vh - 100px)")
+          mapdeck::mapdeckOutput(ns("map_mod"), height = "calc(100vh - 100px)")
         )
       )
     )
@@ -60,6 +68,7 @@ mod_res_summary_area_server <- function(id, state){
     school_mod <- reactive({
       req(state$scenario_selected != -1)
 
+      # browser()
       mod_df <- novo_escolas_mod_vazio()
 
       if (DBI::dbExistsTable(state$db_con, "modificacoes")) {
@@ -69,7 +78,7 @@ mod_res_summary_area_server <- function(id, state){
         )
 
         mod_df <- dplyr::left_join(mod_df, escolas, by = c("co_entidade", "no_entidade")) |>
-          dplyr::select(nm_dre, nm_distrito, cd_setor, co_entidade, no_entidade, tp_categoria, tmi_metro,
+          dplyr::select(nm_dre, nm_distrito, cd_setor, id_hex, co_entidade, no_entidade, tp_categoria, tmi_metro,
                         orig_mat_creche, nova_mat_creche, orig_mat_pre,nova_mat_pre,
                         orig_mat_fund_ai, nova_mat_fund_ai, orig_mat_fund_af, nova_mat_fund_af) |>
           dplyr::arrange(nm_dre, nm_distrito, cd_setor, no_entidade)
@@ -78,13 +87,34 @@ mod_res_summary_area_server <- function(id, state){
       return(mod_df)
     })
 
-    sector_mod <- reactive({
+    hex_mod <- reactive({
       req(school_mod())
 
-      mod_setor <- data.frame(
+      # browser()
+
+      # escolas_full <- escolas |>
+      #   dplyr::mutate(nova_mat_creche = qt_mat_inf_cre,
+      #                 nova_mat_pre = qt_mat_inf_pre,
+      #                 nova_mat_fund_ai = qt_mat_fund_ai,
+      #                 nova_mat_fund_af = qt_mat_fund_af) |>
+      #   dplyr::select(nm_dre, nm_distrito, cd_setor, id_hex,
+      #                 co_entidade, no_entidade, tp_categoria, tmi_metro,
+      #                 orig_mat_creche = qt_mat_inf_cre,
+      #                 nova_mat_creche,
+      #                 orig_mat_pre = qt_mat_inf_pre,
+      #                 nova_mat_pre,
+      #                 orig_mat_fund_ai = qt_mat_fund_ai,
+      #                 nova_mat_fund_ai,
+      #                 orig_mat_fund_af = qt_mat_fund_af,
+      #                 nova_mat_fund_af) |>
+      #     dplyr::filter(!(co_entidade %in% school_mod()$co_entidade)) |>
+      #   dplyr::left_join(school_mod())
+
+      mod_hex <- data.frame(
         nm_dre = character(),
         nm_distrito = character(),
         cd_setor = character(),
+        id_hex = character(),
         etapa = character(),
         orig = numeric(),
         nova = numeric(),
@@ -93,7 +123,7 @@ mod_res_summary_area_server <- function(id, state){
 
       if (nrow(school_mod()) > 0 ) {
         mod_df <- school_mod() |>
-          dplyr::group_by(nm_dre, nm_distrito, cd_setor) |>
+          dplyr::group_by(nm_dre, nm_distrito, cd_setor, id_hex) |>
           dplyr::summarise(dplyr::across(.cols = c(orig_mat_creche, nova_mat_creche,
                                                    orig_mat_pre,nova_mat_pre,
                                                    orig_mat_fund_ai, nova_mat_fund_ai,
@@ -101,20 +131,70 @@ mod_res_summary_area_server <- function(id, state){
                                          .fns = sum, na.rm = TRUE),
                            .groups = "drop")
 
-        mod_setor <- mod_df |>
+        mod_hex <- mod_df |>
           tidyr::pivot_longer(cols = orig_mat_creche:nova_mat_fund_af) |>
           tidyr::separate(col = name, into = c("cenario", "mat", "etapa"), extra = "merge") |>
           tidyr::pivot_wider(names_from = cenario, values_from = value) |>
           dplyr::select(-mat) |>
           dplyr::mutate(dif = nova - orig)
 
-        mod_setor$etapa <- factor(mod_setor$etapa,
+        mod_hex$etapa <- factor(mod_hex$etapa,
                                   levels = c("creche", "pre", "fund_ai", "fund_af"),
                                   labels = c("Creche", "Pré-Escola", "Fund. I", "Fund. II"))
       }
 
-      return(mod_setor)
+      return(mod_hex)
     })
+
+    sector_mod <- reactive({
+      # req(sector_mod())
+
+      mod_df <- hex_mod() |>
+        dplyr::group_by(nm_dre, nm_distrito, cd_setor, etapa) |>
+        dplyr::summarise(dplyr::across(.cols = c(orig, nova, dif),
+                                       .fns = sum, na.rm = TRUE),
+                         .groups = "drop")
+
+      return(mod_df)
+    })
+
+    # sector_mod <- reactive({
+    #   req(school_mod())
+    #
+    #   mod_setor <- data.frame(
+    #     nm_dre = character(),
+    #     nm_distrito = character(),
+    #     cd_setor = character(),
+    #     etapa = character(),
+    #     orig = numeric(),
+    #     nova = numeric(),
+    #     dif = numeric()
+    #   )
+    #
+    #   if (nrow(school_mod()) > 0 ) {
+    #     mod_df <- school_mod() |>
+    #       dplyr::group_by(nm_dre, nm_distrito, cd_setor) |>
+    #       dplyr::summarise(dplyr::across(.cols = c(orig_mat_creche, nova_mat_creche,
+    #                                                orig_mat_pre,nova_mat_pre,
+    #                                                orig_mat_fund_ai, nova_mat_fund_ai,
+    #                                                orig_mat_fund_af, nova_mat_fund_af),
+    #                                      .fns = sum, na.rm = TRUE),
+    #                        .groups = "drop")
+    #
+    #     mod_setor <- mod_df |>
+    #       tidyr::pivot_longer(cols = orig_mat_creche:nova_mat_fund_af) |>
+    #       tidyr::separate(col = name, into = c("cenario", "mat", "etapa"), extra = "merge") |>
+    #       tidyr::pivot_wider(names_from = cenario, values_from = value) |>
+    #       dplyr::select(-mat) |>
+    #       dplyr::mutate(dif = nova - orig)
+    #
+    #     mod_setor$etapa <- factor(mod_setor$etapa,
+    #                               levels = c("creche", "pre", "fund_ai", "fund_af"),
+    #                               labels = c("Creche", "Pré-Escola", "Fund. I", "Fund. II"))
+    #   }
+    #
+    #   return(mod_setor)
+    # })
 
     district_mod <- reactive({
       # req(sector_mod())
@@ -156,6 +236,7 @@ mod_res_summary_area_server <- function(id, state){
         defaultPageSize = round((state$window_height - 220) / 31),  # 345
         paginationType = "simple",
         searchable = FALSE,
+        resizable = TRUE,
         wrap = FALSE,
         # onClick = onclick_js,
         defaultSorted = list(#nm_dre = "asc", nm_distrito = "asc",
@@ -171,8 +252,8 @@ mod_res_summary_area_server <- function(id, state){
           cd_setor = reactable::colDef(name = "Setor", filterable = TRUE, show = TRUE),
           etapa = reactable::colDef(name = "Etapa", filterable = TRUE, show = TRUE),
 
-          orig = reactable::colDef(name = "Vagas\nAtuais", footer = footer_total),
-          nova = reactable::colDef(name = "Vagas\nProjetadas", footer = footer_total),
+          orig = reactable::colDef(name = "Vagas Atuais", footer = footer_total),
+          nova = reactable::colDef(name = "Vagas Projetadas", footer = footer_total),
           dif = reactable::colDef(name = "Diferença", footer = footer_total)
 
         ),
@@ -189,18 +270,43 @@ mod_res_summary_area_server <- function(id, state){
     })
 
 
-    # Modifications map --------------------------------------------------------
-    tooltip_mb <- paste("<div><b>Distrito: </b>{{nm_distrito}}</div>",
-                        "<div><b>Setor: </b>{{cd_setor}}</div>",
-                        "<div><b>Vagas atuais: </b>{{orig}}</div>",
-                        "<div><b>Vagas projetadas: </b>{{nova}}</div>",
-                        "<div><b>Diferença: </b>{{dif}}</div>"
-    )
-    tooltip_selected_mb <- "<div><b>Distrito: </b>{{nm_distrito}}</div> <div><b>Setor: </b>{{cd_setor}}</div>"
-    tooltip_highlighted_mb <- "<div><b>Distrito: </b>{{nm_distrito}}</div> <div><b>Setor: </b>{{cd_setor}}</div>"
+    # Shape data --------------------------------------------------------------
+    map_shape <- reactive({
+      sf_shape <- NULL
+      if (input$unidade_espacial == "hexgrid") {
+        sf_shape <- dplyr::left_join(hexgrid, hexgrid_setor_lookup, by = "id_hex") |>
+          dplyr::left_join(setores |> sf::st_set_geometry(NULL), by = "cd_setor")
+      } else {
+        sf_shape <- setores
+      }
+
+      sf_shape <- sf_shape |>
+        dplyr::mutate(popup = glue::glue("<div><b>DRE: </b>{nm_dre}</div> <div><b>Distrito: </b>{nm_distrito}</div> <div><b>Setor: </b>{cd_setor}</div>"))
+
+      if (length(input$filtro_dre) == 0 & length(input$filtro_distrito) == 0) {
+        return(sf_shape)
+      } else {
+        if (length(input$filtro_dre) > 0) {
+          return(dplyr::filter(sf_shape, nm_dre %in% input$filtro_dre))
+        } else {
+          return(dplyr::filter(sf_shape, nm_distrito %in% input$filtro_distrito))
+        }
+      }
+    })
 
     map_data <- reactive({
-      req(sector_mod(), input$filtro_etapa, input$var_mapa)
+      req(hex_mod(), sector_mod(), input$filtro_etapa, input$var_mapa)
+
+      if (input$unidade_espacial == "hexgrid") {
+        return(map_data_hex())
+      } else {
+        return(map_data_setor())
+      }
+
+    })
+
+    map_data_hex <- function() {
+      # req(hex_mod(), input$filtro_etapa, input$var_mapa)
 
       # buscar dados por setor para plotar
       # etapas selecionadas pelo usuário
@@ -209,8 +315,38 @@ mod_res_summary_area_server <- function(id, state){
 
       # variável selecionada para plotar
       var_selecionada <- switch (input$var_mapa,
-                                 "Atuais" = "orig",
-                                 "Projetadas" = "nova",
+                                 "Vagas Atuais" = "orig",
+                                 "Vagas Projetadas" = "nova",
+                                 "Diferença" = "dif"
+      )
+
+      # preparar o data.frame
+      mod_df <- hex_mod() |>
+        dplyr::filter(etapa %in% etapas_selecionadas) |>
+        dplyr::mutate(highlight_var = get(var_selecionada)) |>
+        dplyr::group_by(nm_dre, nm_distrito, cd_setor, id_hex) |>
+        dplyr::summarise(orig = sum(orig), nova = sum(nova), dif = sum(dif),
+                         highlight_var = sum(highlight_var),
+                         .groups = "drop")
+
+      return(mod_df)
+      # map_data <- dplyr::left_join(hexgrid, mod_df, by = "id_hex")
+      #
+      # return(map_data)
+    }
+
+    map_data_setor <- function(){
+      # req(sector_mod(), input$filtro_etapa, input$var_mapa)
+
+      # buscar dados por setor para plotar
+      # etapas selecionadas pelo usuário
+      etapas_selecionadas <- input$filtro_etapa
+      etapas_selecionadas <- stringr::str_replace(etapas_selecionadas, "Fundamental ", "Fund. ")
+
+      # variável selecionada para plotar
+      var_selecionada <- switch (input$var_mapa,
+                                 "Vagas Atuais" = "orig",
+                                 "Vagas Projetadas" = "nova",
                                  "Diferença" = "dif"
                                  )
 
@@ -223,130 +359,122 @@ mod_res_summary_area_server <- function(id, state){
                          highlight_var = sum(highlight_var),
                          .groups = "drop")
 
-      map_data <- dplyr::left_join(setores, mod_df, by = c("cd_setor", "nm_distrito", "nm_dre"))
+      return(mod_df)
+#
+#       map_data <- dplyr::left_join(setores, mod_df, by = c("cd_setor", "nm_distrito", "nm_dre"))
+#
+#       return(map_data)
+    }
 
-      return(map_data)
-    })
-
-
-    map_rendered <- reactiveVal(FALSE)
-    output$map_mod <- mapboxer::renderMapboxer({
-      # req(state$scenario_selected != -1)
+    # Modifications map --------------------------------------------------------
+    output$map_mod <- mapdeck::renderMapdeck({
+      sf_shape <- setores |>
+        dplyr::mutate(popup = glue::glue("<div><b>DRE: </b>{nm_dre}</div> <div><b>Distrito: </b>{nm_distrito}</div> <div><b>Setor: </b>{cd_setor}</div>"))
 
       state$map_id <- ns("map_mod")
-      sf_shape <- setores
-      map_rendered(TRUE)
 
-      mapboxer::mapboxer(style = "mapbox://styles/mapbox/light-v9", token = golem::get_golem_options("mapbox_token"))  |>
-
-        # meshblock highlights
-        mapboxer::add_fill_layer(
-          fill_color = c("get", "color"), fill_opacity = 0.5, id = "highlight-mb",
-          source = mapboxer::as_mapbox_source(setores[0,] |> dplyr::mutate(color = "#000000")),
-          fill_sort_key = 10
-        ) |>
-
-        # map overlay showing the clicked-on meshblock
-        mapboxer::add_fill_layer(
-          fill_color = theme$COLOR_ORANGE,
-          fill_opacity = 0.75, id = "selected-mb",
-          source = mapboxer::as_mapbox_source(setores[0,]), fill_sort_key = 12
-        ) |>
-
-        # map overlay of all meshblocks
-        mapboxer::add_fill_layer(
-          fill_color = "rgba(64,64,64,0.1)", fill_outline_color = "rgba(64,64,64,0.5)", id = "base",
-          fill_sort_key = 1, source = mapboxer::as_mapbox_source(sf_shape)
-        ) |>
-
-        # map overlay of all meshblocks
-        mapboxer::add_fill_layer(
-          fill_color = c("get", "color"), fill_outline_color = "rgba(64,64,64,0.5)", id = "mb",
-          fill_opacity = 0.5,
-          fill_sort_key = 1, source = mapboxer::as_mapbox_source(setores[0,])
-        ) |>
-
-        # add tooltips for all layers
-        mapboxer::add_tooltips(layer_id = "mb", tooltip = tooltip_mb) |>
-        mapboxer::add_tooltips(layer_id = "highlight-mb", tooltip = tooltip_highlighted_mb) |>
-        # add_tooltips(layer_id = "highlight-bucket", tooltip = tooltip_highlighted_bucket) |>
-        mapboxer::add_tooltips(layer_id = "selected-mb", tooltip = tooltip_selected_mb) |>
-
-        mapboxer::fit_bounds(sf::st_bbox(sf_shape))
+      mapdeck::mapdeck(
+        style = "mapbox://styles/mapbox/light-v9",
+        location = state$centroid,
+        zoom = 9,
+        min_zoom = 8
+      ) |>
+        mapdeck::add_polygon(
+          data = sf_shape,
+          # polyline = "geometry",
+          fill_colour = "#bfbfbf60",
+          fill_opacity = 255,
+          highlight_colour = "#eeeeee60",
+          auto_highlight = TRUE,
+          layer_id = "base",
+          id = "cd_setor",
+          update_view = FALSE,
+          focus_layer = FALSE,
+          tooltip = "popup",
+          stroke_width = 15,
+          stroke_colour = "#404040ff",
+          stroke_opacity = 255
+        )
     })
 
-    # redesenhar mapa caso a variável seja atualizada
+
     observeEvent(
-      {
+      eventExpr = {
+        map_shape()
         map_data()
-        state$scenario_selected
-        input$filtro_etapa
-        input$var_mapa
       },
-      {
-        req(map_rendered() == TRUE)
+      handlerExpr = {
+        req(map_shape(), map_data())
 
-        if (nrow(map_data() |> tidyr::drop_na()) == 0) {
-          # sem dados para exibir
-          mapboxer::mapboxer_proxy(ns("map_mod")) |>
-            mapboxer::set_data(data = setores[0, ], source_id = "mb") |>
+        # browser()
+        data_sf <- dplyr::left_join(map_shape(), map_data()) |>
+          dplyr::mutate(valor = highlight_var)
 
-            mapboxer::update_mapboxer()
+        # create legend
+        legend_converter <- function (x) as.integer(x)
 
-          return()
+        l_palette <- "viridis"
+        l_values <- c(data_sf$valor)
+
+        if (input$var_mapa == "Diferença") {
+          l_palette <- "rdbu"
+
+          max_value <- max(abs(l_values))
+          l_values <- c(-max_value, l_values, max_value)
         }
 
-        # selecionar a paleta de cores
-        pal_type <- NULL
-        pal <- NULL
-        legend.cols = NULL
-        legend_breaks = NULL
+        l <- colourvalues::colour_values(
+          x = l_values,
+          n_summaries = 6,
+          alpha = 200,
+          palette = l_palette
+        )
 
-        if (input$var_mapa %in% c("Atuais", "Projetadas")) {
-          pal_type <- "Reds"
 
-          max_val <- max(map_data()$highlight_var, na.rm = TRUE)
-          pal <- scales::col_bin(pal_type, c(0, max_val), bins = 7, na.color = "#04040408" )
-
-          legend.breaks = seq(0, max_val, length.out = 7) |> round()
-          legend.cols = pal(legend.breaks)
-
-        } else {
-          pal_type <- "RdBu"
-
-          max_val <- max(abs(map_data()$highlight_var), na.rm = TRUE)
-          pal <- scales::col_bin(pal_type, c(-max_val, max_val), bins = 7, na.color = "#04040408" )
-
-          legend.breaks = seq(-max_val, max_val, length.out = 7) |> round()
-          legend.cols = pal(legend.breaks)
+        if (input$var_mapa == "Diferença") {
+          l$colours <- l$colours[2:(length(l$colours)-1)]
         }
 
-        # aplicar paleta de cores aos dados
-        map_data_sf <- map_data() |>
-          dplyr::mutate(color = pal(highlight_var)) |>
-          tidyr::drop_na()
+        legend_title = input$var_mapa
 
-        # push new data into the `highlight-mb` map layer
-        # NOTE: we need to use `ns()` to retrieve the correct map object
+        legend <- mapdeck::legend_element(
+          variables = legend_converter(l$summary_values)
+          , colours = l$summary_colours
+          , colour_type = "fill"
+          , variable_type = "gradient"
+          , title = legend_title
+        )
+        js_legend <- mapdeck::mapdeck_legend(legend)
 
-        if (nrow(map_data_sf) > 0) {
 
-          mapboxer::mapboxer_proxy(ns("map_mod")) |>
-            mapboxer::set_data(data = map_data_sf, source_id = "mb") |>
+        data_sf$color <- l$colours
+        data_sf <- data_sf |>
+          dplyr::mutate(popup = glue::glue("{popup} <div><b>{legend_title}: </b>{valor}</div>"))
 
-            mapboxer::update_mapboxer()
-        } else {
-          # sem dados para exibir
-          mapboxer::mapboxer_proxy(ns("map_mod")) |>
-            mapboxer::set_data(data = setores[0, ], source_id = "mb") |>
+        mapdeck::mapdeck_update(map_id = ns("map_mod")) |>
+          mapdeck::clear_polygon(layer_id = "base") |>
+          mapdeck::add_polygon(
+            data = data_sf,
+            fill_colour = "color",
+            fill_opacity = 200,
+            highlight_colour = "#eeeeee60",
+            auto_highlight = TRUE,
+            layer_id = "base",
+            id = "cd_setor",
+            update_view = FALSE,
+            focus_layer = FALSE,
+            tooltip = "popup",
 
-            mapboxer::update_mapboxer()
+            legend = js_legend,
 
-        }
-
-      })
-
+            stroke_width = 15,
+            stroke_colour = "#404040ff",
+            stroke_opacity = 255
+          )
+      }
+    )
   })
+
 }
 
 ## To be copied in the UI
