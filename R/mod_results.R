@@ -33,11 +33,11 @@ mod_results_ui <- function(id){
           tabPanel(title = "Modificações",
                    mod_res_summary_ui("res_summary")
           ),
-          tabPanel(title = "Modificações por Setor",
+          tabPanel(title = "Modificações por Área",
                    style = "margin: 5px; padding: 5px;",
                    mod_res_summary_area_ui("res_summary_area")
           ),
-          tabPanel(title = "Déficit por Setor",
+          tabPanel(title = "Resultado (déficit ou superávit)",
                    style = "margin: 5px; padding: 5px;",
                    mod_res_deficit_setor_ui("res_deficit_setor")
           )
