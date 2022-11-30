@@ -24,7 +24,11 @@ mod_res_summary_server <- function(id, state){
     school_mod <- reactive({
       req(state$scenario_selected)
 
-      mod_df <- data.frame()
+      mod_df <- data.frame(nm_dre = character(),
+                           nm_distrito = character(),
+                           cd_setor = character(),
+                           no_entidade = character()
+                           )
 
       if (DBI::dbExistsTable(state$db_con, "modificacoes")) {
         mod_df <- DBI::dbGetQuery(state$db_con,

@@ -27,7 +27,12 @@ mod_res_selector_server <- function(id, state){
       if (DBI::dbExistsTable(state$db_con, "cenarios")) {
         DBI::dbReadTable(state$db_con, "cenarios")
       } else {
-        data.frame()
+        data.frame(id = numeric(),
+                   data = numeric(),
+                   nome = character(),
+                   autor = character(),
+                   descricao = character()
+                   )
       }
     })
 
@@ -38,6 +43,7 @@ mod_res_selector_server <- function(id, state){
     })
 
     observeEvent(selected_row(), {
+      req(selected_row())
       row_index <- selected_row()
 
       if (is.null(row_index)) {
@@ -77,7 +83,7 @@ mod_res_selector_server <- function(id, state){
         ),
         language = reactable::reactableLang(
           searchPlaceholder = "Pesquisar cenário",
-          noData = "Nenhum cenário encontrado",
+          noData = "Nenhum cenário",
           pageInfo = "{rowStart}\u2013{rowEnd} de {rows} cenários",
           pagePrevious = "\u276e",
           pageNext = "\u276f",

@@ -17,6 +17,16 @@ mod_res_deficit_setor_ui <- function(id){
           style = "margins: 5px",
           h4("Configurações do Mapa", class = "tile-headline"),
 
+          # unidades espaciais
+          shinyWidgets::pickerInput(ns("unidade_espacial"),
+                                    label = "Divisão Espacial",
+                                    multiple = FALSE,
+                                    choices = list("Hexágonos" = "hexgrid",
+                                                   "Setores" = "setores_sme"),
+                                    # "Distritos" = "distritos"
+                                    selected = "setores_sme",
+                                    inline = TRUE,
+                                    width = "180px"),
           # etapa de ensino
           shinyWidgets::pickerInput(ns("filtro_etapa"),
                                     label = "Etapa de ensino",
@@ -43,7 +53,7 @@ mod_res_deficit_setor_ui <- function(id){
         width = 6,
         div(
           style = "margins: 5px",
-          mapboxer::mapboxerOutput(ns("map_deficit"), height = "calc(100vh - 100px)")
+          mapdeck::mapdeckOutput(ns("map_deficit"), height = "calc(100vh - 100px)")
         )
       )
     )
@@ -57,21 +67,21 @@ mod_res_deficit_setor_server <- function(id, state){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
 
-    sector_def <- reactive({
+    # Data --------------------------------------------------------------------
+    hex_def <- reactive({
       req(state$scenario_selected != -1)
 
       # mod_df <- novo_escolas_mod_vazio()
       def_df <- data.frame()
 
-      if (DBI::dbExistsTable(state$db_con, "deficit_por_setor")) {
+      if (DBI::dbExistsTable(state$db_con, "deficit_por_hex")) {
         def_df <- DBI::dbGetQuery(state$db_con,
-                                  sprintf("SELECT * FROM deficit_por_setor WHERE id_cenario = %d",
+                                  sprintf("SELECT * FROM deficit_por_hex WHERE id_cenario = %d",
                                           state$scenario_selected)
                                   ) |>
           tidyr::drop_na() |>
-          dplyr::left_join(deficit_bfca_setor, by = c("cd_dre", "nr_distrito", "cd_setor",
-                                                      "ano", "faixa_idade", "etapa", "serie", "cutoff"),
-                           suffix = c(".sim", ".or")) |>
+          dplyr::left_join(deficit_bfca_hex, by = c("id_hex", "ano", "faixa_idade", "etapa", "serie", "cutoff"),
+                           suffix = c("_sim", "_or")) |>
           dplyr::mutate(serie = factor(serie,
                                        levels = c("creche", "pre", "anos_iniciais", "anos_finais"),
                                        labels = c("Creche", "Pré-Escola", "Fundamental I", "Fundamental II"))) |>
@@ -79,30 +89,42 @@ mod_res_deficit_setor_server <- function(id, state){
 
 
 
-        def_df <- def_df |>
-          dplyr::mutate(vagas_acessiveis_rel = vagas_acessiveis.sim - vagas_acessiveis.or,
-                        deficit_rel = deficit.sim - deficit.or) |>
-          dplyr::select(nm_distrito = nm_distrito.sim, cd_setor, serie, ano,
-                        populacao = populacao.or,
-                        vagas_acessiveis_or = vagas_acessiveis.or,
-                        vagas_acessiveis_sim = vagas_acessiveis.sim,
-                        vagas_acessiveis_rel,
-                        deficit_or = deficit.or,
-                        deficit_sim = deficit.sim,
-                        deficit_rel)
+        def_clean_df <- def_df |>
+          dplyr::mutate(vagas_acessiveis_rel = vagas_acessiveis_sim - vagas_acessiveis_or,
+                        deficit_rel = deficit_sim - deficit_or) |>
+          dplyr::select(id_hex, cd_setor, nm_distrito, serie, ano,
+                        populacao = populacao_or,
+                        vagas_acessiveis_or, vagas_acessiveis_sim, vagas_acessiveis_rel,
+                        deficit_or, deficit_sim, deficit_rel)
 
       }
 
-      return(def_df)
+      return(def_clean_df)
     })
 
+    setor_def <- reactive({
+      req(hex_def())
+
+      setor_def <- hex_def() |>
+        dplyr::group_by(cd_setor, nm_distrito, serie, ano) |>
+        dplyr::summarise(across(.cols = c(populacao, vagas_acessiveis_or, vagas_acessiveis_sim,
+                                          deficit_or, deficit_sim), sum),
+                         .groups = "drop") |>
+        dplyr::mutate(vagas_acessiveis_rel = vagas_acessiveis_sim - vagas_acessiveis_or,
+                      deficit_rel = deficit_sim - deficit_or)
+
+      return(setor_def)
+    })
+
+
+    # Table -------------------------------------------------------------------
     footer_total <- function(values) format(sum(values, na.rm = TRUE),
                                             big.mark = ".", decimal.mark = ",")
 
     output$table_deficit <- reactable::renderReactable({
-      req(nrow(sector_def()) > 0, state$window_height)
+      req(nrow(setor_def()) > 0, state$window_height)
 
-      sector_def_clean <- sector_def() |>
+      sector_def_clean <- setor_def() |>
         dplyr::select(nm_distrito, cd_setor, serie, ano,
                       populacao, vagas_acessiveis_or, vagas_acessiveis_sim,
                       deficit_or, deficit_sim)
@@ -115,13 +137,14 @@ mod_res_deficit_setor_server <- function(id, state){
         defaultPageSize = round((state$window_height - 400) / 31),  # 345
         paginationType = "simple",
         searchable = FALSE,
+        resizable = TRUE,
         wrap = FALSE,
         defaultSorted = list(cd_setor = "asc", serie = "asc", ano = "asc"),
 
         columns = list(
-          nm_distrito = reactable::colDef(name = "Distrito", filterable = TRUE, show = TRUE, minWidth = 50),
+          nm_distrito = reactable::colDef(name = "Distrito", filterable = TRUE, show = TRUE, minWidth = 30),
           cd_setor = reactable::colDef(name = "Setor", filterable = TRUE, show = TRUE, minWidth = 30),
-          serie = reactable::colDef(name = "Etapa", filterable = TRUE, show = TRUE, minWidth = 50),
+          serie = reactable::colDef(name = "Etapa", filterable = TRUE, show = TRUE, minWidth = 30),
 
           ano = reactable::colDef(name = "Ano", filterable = TRUE, show = TRUE, minWidth = 25),
 
@@ -144,87 +167,123 @@ mod_res_deficit_setor_server <- function(id, state){
     })
 
 
+    # Map ---------------------------------------------------------------------
+    output$map_deficit <- mapdeck::renderMapdeck({
+      sf_shape <- setores |>
+        dplyr::mutate(popup = glue::glue("<div><b>DRE: </b>{nm_dre}</div> <div><b>Distrito: </b>{nm_distrito}</div> <div><b>Setor: </b>{cd_setor}</div>"))
 
-# Mapa --------------------------------------------------------------------
+      state$map_id <- ns("map")
 
-    sector_deficit_sf <- reactive({
-      req(sector_def())
-
-      var_name <- "deficit_or"
-      if (input$var_mapa == "Absoluto") {
-        var_name <- "deficit_sim"
-      } else {
-        var_name <- "deficit_rel"
-      }
-
-      deficit_sf <-
-        setores |> dplyr::left_join(sector_def(), by="cd_setor") |>
-        dplyr::mutate(deficit = get(var_name))
-
-    })
-
-
-    tooltip_mb <- paste("<div><b>Distrito: </b>{{nm_distrito}}</div>",
-                        "<div><b>Setor: </b>{{cd_setor}}</div>")
-
-    tooltip_selected_mb <- "<div><b>Distrito: </b>{{nm_distrito}}</div> <div><b>Setor: </b>{{cd_setor}}</div>"
-    tooltip_highlighted_mb <- "<div><b>Distrito: </b>{{nm_distrito}}</div> <div><b>Setor: </b>{{cd_setor}}</div>"
-
-    output$map_deficit <- mapboxer::renderMapboxer({
-      # req(state$scenario_selected != -1)
-
-      state$map_id <- ns("map_deficit")
-      sf_shape <- sector_deficit_sf()
-
-      mapboxer::mapboxer(
+      mapdeck::mapdeck(
         style = "mapbox://styles/mapbox/light-v9",
-        token = golem::get_golem_options("mapbox_token"),
-        center = state$centroid,
-        zoom = 10,
-        minZoom = 8
-        )  |>
-
-        # meshblock highlights
-        mapboxer::add_fill_layer(
-          fill_color = c("get", "color"), fill_opacity = 0.5, id = "highlight-mb",
-          source = mapboxer::as_mapbox_source(setores[0,] |> dplyr::mutate(color = "#000000")),
-          fill_sort_key = 10
-        ) |>
-
-        # map overlay showing the clicked-on meshblock
-        mapboxer::add_fill_layer(
-          fill_color = theme$COLOR_ORANGE,
-          fill_opacity = 0.75, id = "selected-mb",
-          source = mapboxer::as_mapbox_source(setores[0,]), fill_sort_key = 12
-        ) |>
-
-        # map overlay of all meshblocks
-        mapboxer::add_fill_layer(
-          fill_color = "rgba(64,64,64,0.1)", fill_outline_color = "rgba(64,64,64,0.5)", id = "base",
-          fill_sort_key = 1, source = mapboxer::as_mapbox_source(sf_shape)
-        ) |>
-
-        # map overlay of all meshblocks
-        mapboxer::add_fill_layer(
-          fill_color = c("get", "color"), fill_outline_color = "rgba(64,64,64,0.5)", id = "mb",
-          fill_opacity = 0.5,
-          fill_sort_key = 1, source = mapboxer::as_mapbox_source(setores[0,])
-        ) |>
-
-        # add tooltips for all layers
-        mapboxer::add_tooltips(layer_id = "mb", tooltip = tooltip_mb) |>
-        mapboxer::add_tooltips(layer_id = "highlight-mb", tooltip = tooltip_highlighted_mb) |>
-        # add_tooltips(layer_id = "highlight-bucket", tooltip = tooltip_highlighted_bucket) |>
-        mapboxer::add_tooltips(layer_id = "selected-mb", tooltip = tooltip_selected_mb) |>
-
-        mapboxer::fit_bounds(sf::st_bbox(sf_shape),
-                             options = list(options.easing = list(animate = FALSE))
-                             )
+        location = state$centroid,
+        zoom = 9,
+        min_zoom = 8
+      ) |>
+        mapdeck::add_polygon(
+          data = sf_shape,
+          # polyline = "geometry",
+          fill_colour = "#bfbfbf60",
+          fill_opacity = 255,
+          highlight_colour = "#eeeeee60",
+          auto_highlight = TRUE,
+          layer_id = "base",
+          id = "cd_setor",
+          update_view = FALSE,
+          focus_layer = FALSE,
+          tooltip = "popup",
+          stroke_width = 15,
+          stroke_colour = "#404040ff",
+          stroke_opacity = 255
+        )
     })
 
+    observeEvent(
+      eventExpr = {
+        input$unidade_espacial
+        input$filtro_etapa
+        input$var_mapa
+      },
+      handlerExpr = {
+        req(hex_def(), setor_def())
+
+        data_sf <- NULL
+        if (input$unidade_espacial == "hexgrid") {
+          data_sf <- dplyr::left_join(hexgrid, hex_def(), by = "id_hex") |>
+            # dplyr::left_join(hexgrid_setor_lookup, by = "id_hex") |>
+            dplyr::left_join(setores |> sf::st_set_geometry(NULL), by = c("cd_setor", "nm_distrito"))
+        } else {
+          data_sf <- dplyr::left_join(setores, setor_def())
+        }
+
+        if (input$var_mapa == "Absoluto") {
+          data_sf <- dplyr::mutate(data_sf, valor = deficit_sim)
+        } else {
+          data_sf <- dplyr::mutate(data_sf, valor = deficit_rel)
+        }
+
+        data_sf <- dplyr::mutate(data_sf, popup = glue::glue("<div><b>DRE: </b>{nm_dre}</div> <div><b>Distrito: </b>{nm_distrito}</div> <div><b>Setor: </b>{cd_setor}</div>"))
+
+        # create legend
+        legend_converter <- function (x) as.integer(x)
+
+        # l_palette <- "viridis"
+
+        # if (input$mapa_variavel == "resultado") {
+        l_palette <- "rdbu"
+        l_values <- data_sf$valor
+
+        max_value <- max(abs(l_values))
+        l_values <- c(-max_value, l_values, max_value)
+        # }
+
+        l <- colourvalues::colour_values(
+          x = l_values,
+          n_summaries = 6,
+          alpha = 200,
+          palette = l_palette
+        )
+
+        l$colours <- l$colours[2:(length(l$colours)-1)]
+
+        legend_title = input$var_mapa
+
+        legend <- mapdeck::legend_element(
+          variables = legend_converter(l$summary_values)
+          , colours = l$summary_colours
+          , colour_type = "fill"
+          , variable_type = "gradient"
+          , title = legend_title
+        )
+        js_legend <- mapdeck::mapdeck_legend(legend)
 
 
+        data_sf$color <- l$colours
+        data_sf <- data_sf |>
+          dplyr::mutate(popup = glue::glue("{popup} <div><b>{legend_title}: </b>{valor}</div>"))
 
+        mapdeck::mapdeck_update(map_id = ns("map_deficit")) |>
+          mapdeck::clear_polygon(layer_id = "base") |>
+          mapdeck::add_polygon(
+            data = data_sf,
+            fill_colour = "color",
+            fill_opacity = 200,
+            highlight_colour = "#eeeeee60",
+            auto_highlight = TRUE,
+            layer_id = "base",
+            id = "cd_setor",
+            update_view = FALSE,
+            focus_layer = FALSE,
+            tooltip = "popup",
+
+            legend = js_legend,
+
+            stroke_width = 15,
+            stroke_colour = "#404040ff",
+            stroke_opacity = 255
+          )
+      }
+    )
   })
 }
 
