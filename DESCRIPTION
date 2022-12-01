@@ -24,6 +24,7 @@ Imports:
     janitor,
     jsonlite,
     mapdeck,
+    openxlsx,
     piggyback,
     purrr,
     reactable,
@@ -33,8 +34,7 @@ Imports:
     shinyWidgets,
     stringr,
     tidyr,
-    uuid,
-    XLConnect
+    uuid
 Suggests: 
     spelling,
     testthat (>= 3.0.0)

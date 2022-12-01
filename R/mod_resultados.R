@@ -272,17 +272,17 @@ mod_resultados_server <- function(id, db_con){
                         vagas_acessiveis_orig, deficit_orig,
                         vagas_acessiveis_sim, deficit_sim)
 
-        template_xlsx <- XLConnect::loadWorkbook(temp_xls)
+        # template_xlsx <- XLConnect::loadWorkbook(temp_xls)
         # template_xlsx <- XLConnect::loadWorkbook("data/template_resultados.xlsx")
 
-        XLConnect::writeWorksheet(template_xlsx, cenario, "raw_cenario")
-        XLConnect::writeWorksheet(template_xlsx, modificacoes, "raw_modificacoes")
-        XLConnect::writeWorksheet(template_xlsx, deficit_distrito_joined, "raw_deficit_distrito")
-        XLConnect::writeWorksheet(template_xlsx, deficit_setor_joined, "raw_deficit_setor")
+        # XLConnect::writeWorksheet(template_xlsx, cenario, "raw_cenario")
+        # XLConnect::writeWorksheet(template_xlsx, modificacoes, "raw_modificacoes")
+        # XLConnect::writeWorksheet(template_xlsx, deficit_distrito_joined, "raw_deficit_distrito")
+        # XLConnect::writeWorksheet(template_xlsx, deficit_setor_joined, "raw_deficit_setor")
         # XLConnect::writeWorksheet(template_xlsx, deficit_hex_joined, "raw_deficit_hex")
 
         # xls_file <- paste0("data/resultados_", id_cenario, ".xlsx")
-        XLConnect::saveWorkbook(template_xlsx, file)
+        # XLConnect::saveWorkbook(template_xlsx, file)
 
       })
 
