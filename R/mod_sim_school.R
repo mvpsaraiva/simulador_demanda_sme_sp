@@ -56,10 +56,10 @@ mod_sim_school_server <- function(id, state){
             # style = "margin: 10px; padding: 10px; overflow-y: auto",
             tagList(
               h4(paste0("Déficit por Distrito - ", escola()$nm_distrito[1]), class = "tile-headline"),
-              renderTable({deficit_distrito}, colnames = FALSE, width = "100%"),
+              renderTable({deficit_distrito}, colnames = TRUE, width = "100%"),
 
               h4(paste0("Déficit por Setor - ", escola()$cd_setor[1]), class = "tile-headline"),
-              renderTable({deficit_setor}, colnames = FALSE, width = "100%"),
+              renderTable({deficit_setor}, colnames = TRUE, width = "100%"),
 
               # dados da escola
               h4(escola()$no_entidade[1], class = "tile-headline"),
