@@ -26,8 +26,18 @@ mod_res_deficit_setor_ui <- function(id){
                                     # "Distritos" = "distritos"
                                     selected = "setores_sme",
                                     inline = TRUE,
-                                    width = "180px"),
+                                    width = "150px"),
           # etapa de ensino
+          shinyWidgets::pickerInput(ns("filtro_ano"),
+                                    label = "Ano",
+                                    multiple = FALSE,
+                                    choices = c("2020" = 2020,
+                                                "2035" = 2035,
+                                                "2045" = 2045),
+                                    selected = "2020",
+                                    inline = TRUE,
+                                    width = "75px"),
+        # etapa de ensino
           shinyWidgets::pickerInput(ns("filtro_etapa"),
                                     label = "Etapa de ensino",
                                     multiple = FALSE,
@@ -202,6 +212,7 @@ mod_res_deficit_setor_server <- function(id, state){
       eventExpr = {
         input$unidade_espacial
         input$filtro_etapa
+        input$filtro_ano
         input$var_mapa
       },
       handlerExpr = {
@@ -221,6 +232,8 @@ mod_res_deficit_setor_server <- function(id, state){
         } else {
           data_sf <- dplyr::mutate(data_sf, valor = deficit_rel)
         }
+
+        data_sf <- dplyr::filter(data_sf, ano == input$filtro_ano)
 
         data_sf <- dplyr::mutate(data_sf, popup = glue::glue("<div><b>DRE: </b>{nm_dre}</div> <div><b>Distrito: </b>{nm_distrito}</div> <div><b>Setor: </b>{cd_setor}</div>"))
 
