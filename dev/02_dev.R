@@ -50,7 +50,8 @@ golem::add_sass_file("custom")
 # usethis::use_data_raw(name = "theme", open = FALSE)
 # usethis::use_data_raw(name = "deficit_bfca_setor", open = FALSE)
 # usethis::use_data_raw(name = "deficit_bfca_distrito", open = FALSE)
-usethis::use_data_raw(name = "deficit_bfca_hex", open = FALSE)
+# usethis::use_data_raw(name = "deficit_bfca_hex", open = FALSE)
+# usethis::use_data_raw(name = "metro", open = FALSE)
 
 ## Tests ----
 ## Add one line by test you want to create

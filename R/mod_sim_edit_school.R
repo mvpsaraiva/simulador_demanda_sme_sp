@@ -75,40 +75,44 @@ mod_sim_edit_school_server <- function(id, state){
           ),
           fluidRow(
             column(4, p("Creche")),
-            column(4, numericInput(ns("cre_vagas"), label = "",
-                                   value = escola()$qt_mat_inf_cre[1],
-                                   min=escola()$qt_mat_inf_cre[1],
-                                   max=escola()$qt_mat_inf_cre[1])),
+            column(4, textOutput(ns("cre_vagas"))),
+            # column(4, numericInput(ns("cre_vagas"), label = "",
+            #                        value = escola()$qt_mat_inf_cre[1],
+            #                        min=escola()$qt_mat_inf_cre[1],
+            #                        max=escola()$qt_mat_inf_cre[1])),
             column(4, numericInput(ns("cre_novas"), label = "",
                                    value = state$edit_school$nova_mat_creche,
                                    min=0))
           ),
           fluidRow(
             column(4, p("Pré-escola")),
-            column(4, numericInput(ns("pre_vagas"), label = "",
-                                   value = escola()$qt_mat_inf_pre[1],
-                                   min=escola()$qt_mat_inf_pre[1],
-                                   max=escola()$qt_mat_inf_pre[1])),
+            column(4, textOutput(ns("pre_vagas"))),
+            # column(4, numericInput(ns("pre_vagas"), label = "",
+            #                        value = escola()$qt_mat_inf_pre[1],
+            #                        min=escola()$qt_mat_inf_pre[1],
+            #                        max=escola()$qt_mat_inf_pre[1])),
             column(4, numericInput(ns("pre_novas"), label = "",
                                    value = state$edit_school$nova_mat_pre,
                                    min=0))
           ),
           fluidRow(
             column(4, p("Fundamental I")),
-            column(4, numericInput(ns("fai_vagas"), label = "",
-                                   value = escola()$qt_mat_fund_ai[1],
-                                   min=escola()$qt_mat_fund_ai[1],
-                                   max=escola()$qt_mat_fund_ai[1])),
+            column(4, textOutput(ns("fai_vagas"))),
+            # column(4, numericInput(ns("fai_vagas"), label = "",
+            #                        value = escola()$qt_mat_fund_ai[1],
+            #                        min=escola()$qt_mat_fund_ai[1],
+            #                        max=escola()$qt_mat_fund_ai[1])),
             column(4, numericInput(ns("fai_novas"), label = "",
                                    value = state$edit_school$nova_mat_fund_ai,
                                    min=0))
           ),
           fluidRow(
             column(4, p("Fundamental II")),
-            column(4, numericInput(ns("faf_vagas"), label = "",
-                                   value = escola()$qt_mat_fund_af[1],
-                                   min=escola()$qt_mat_fund_af[1],
-                                   max=escola()$qt_mat_fund_af[1])),
+            column(4, textOutput(ns("faf_vagas"))),
+            # column(4, numericInput(ns("faf_vagas"), label = "",
+            #                        value = escola()$qt_mat_fund_af[1],
+            #                        min=escola()$qt_mat_fund_af[1],
+            #                        max=escola()$qt_mat_fund_af[1])),
             column(4, numericInput(ns("faf_novas"), label = "",
                                    value = state$edit_school$nova_mat_fund_af,
                                    min=0))
@@ -121,23 +125,27 @@ mod_sim_edit_school_server <- function(id, state){
 
 # Events ------------------------------------------------------------------
 
+    output$cre_vagas <- renderText({ escola()$qt_mat_inf_cre[1] })
+    output$pre_vagas <- renderText({ escola()$qt_mat_inf_pre[1] })
+    output$fai_vagas <- renderText({ escola()$qt_mat_fund_ai[1] })
+    output$faf_vagas <- renderText({ escola()$qt_mat_fund_af[1] })
     ## evitar que vagas atuais sejam alteradas
-    observeEvent(input$cre_vagas, {
-      req(escola())
-      isolate(updateNumericInput(session, "cre_vagas", value = escola()$qt_mat_inf_cre[1]))
-    })
-    observeEvent(input$pre_vagas, {
-      req(escola())
-      isolate(updateNumericInput(session, "pre_vagas", value = escola()$qt_mat_inf_pre[1]))
-    })
-    observeEvent(input$fai_vagas, {
-      req(escola())
-      isolate(updateNumericInput(session, "fai_vagas", value = escola()$qt_mat_fund_ai[1]))
-    })
-    observeEvent(input$faf_vagas, {
-      req(escola())
-      isolate(updateNumericInput(session, "faf_vagas", value = escola()$qt_mat_fund_af[1]))
-    })
+    # observeEvent(input$cre_vagas, {
+    #   req(escola())
+    #   isolate(updateNumericInput(session, "cre_vagas", value = escola()$qt_mat_inf_cre[1]))
+    # })
+    # observeEvent(input$pre_vagas, {
+    #   req(escola())
+    #   isolate(updateNumericInput(session, "pre_vagas", value = escola()$qt_mat_inf_pre[1]))
+    # })
+    # observeEvent(input$fai_vagas, {
+    #   req(escola())
+    #   isolate(updateNumericInput(session, "fai_vagas", value = escola()$qt_mat_fund_ai[1]))
+    # })
+    # observeEvent(input$faf_vagas, {
+    #   req(escola())
+    #   isolate(updateNumericInput(session, "faf_vagas", value = escola()$qt_mat_fund_af[1]))
+    # })
 
     # salvar alterações nas vagas
     observeEvent(input$cre_novas, {

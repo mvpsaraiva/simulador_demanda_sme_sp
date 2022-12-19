@@ -50,7 +50,7 @@ app_server <- function(input, output, session) {
       description = ""
     ),
 
-    school_mod= novo_escolas_mod_vazio(),
+    school_mod = novo_escolas_mod_vazio(),
 
     window_height = 800,
     map_id = NULL,
@@ -73,6 +73,7 @@ app_server <- function(input, output, session) {
 
   mod_results_server("results", app_state)
   mod_res_selector_server("res_selector", app_state)
+  mod_res_selector_server("res_selector_load", app_state)
   mod_res_summary_server("res_summary", app_state)
   mod_res_summary_area_server("res_summary_area", app_state)
   mod_res_deficit_setor_server("res_deficit_setor", app_state)

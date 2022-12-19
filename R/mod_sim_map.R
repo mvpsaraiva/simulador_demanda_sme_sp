@@ -45,7 +45,8 @@ mod_sim_map_ui <- function(id){
                              label = "Divisão Espacial",
                              multiple = FALSE,
                              choices = list("Hexágonos" = "hexgrid",
-                                            "Setores" = "setores_sme"),
+                                            "Setores" = "setores_sme",
+                                            "Nenhuma" = "nenhuma"),
                                             # "Distritos" = "distritos"
                              selected = "setores_sme",
                              inline = TRUE,
@@ -93,7 +94,36 @@ mod_sim_map_ui <- function(id){
                                                        "2045" = 2045),
                                            selected = "2020",
                                            inline = TRUE,
-                                           width = "200px")
+                                           width = "200px"),
+                 # mapear escolas
+                 div(
+                   p("Exibir escolas"),
+                   shinyWidgets::radioGroupButtons(
+                     inputId = ns("mapa_exibir_escolas"),
+                     label = NULL, # "Exibir escolas",
+                     choices = c("Nenhuma" = "nenhuma",
+                                 "Todas" = "todas",
+                                 "Privadas" = "privada",
+                                 "Públicas" = "publica",
+                                 "Municipais" = "municipal",
+                                 "Estaduais" = "estadual"),
+                     selected = "nenhuma",
+                     individual = TRUE
+                   )
+                 ),
+                 div(
+                   p("Exibir estações de transporte público"),
+                   shinyWidgets::checkboxGroupButtons(
+                     inputId = ns("mapa_exibir_metro"),
+                     label = NULL, # "Exibir escolas",
+                     choices = c("Metrô",
+                                 "Monotrilho",
+                                 "BRT",
+                                 "Trem"),
+                     selected = NULL,
+                     individual = TRUE
+                   )
+                 )
                )
       )
 
@@ -259,6 +289,75 @@ mod_sim_map_server <- function(id, state){
 
     })
 
+    ## Filter data -------------------------------
+    school_data <- reactive({
+      # req(state$state$id)
+
+      # Todas as escolas
+      d <- escolas
+
+      # Filtrar DRE ou Distrito
+      if (length(state$selected_dres) > 0) {
+        d <- d |>
+          dplyr::filter(nm_dre %in% state$selected_dres)
+      }
+      if (length(state$selected_districts) > 0) {
+        d <- d |>
+          dplyr::filter(nm_distrito %in% state$selected_districts)
+      }
+
+      # nenhuma escola... código da entidade nunca é vazio
+      if (input$mapa_exibir_escolas == "nenhuma") {
+        d <- d |> dplyr::filter(is.null(co_entidade))
+      }
+      if (input$mapa_exibir_escolas == "estadual") {
+        d <- d |> dplyr::filter(tp_categoria == "estadual")
+      }
+      if (input$mapa_exibir_escolas == "municipal") {
+        d <- d |> dplyr::filter(tp_categoria == "municipal")
+      }
+      if (input$mapa_exibir_escolas == "publica") {
+        d <- d |> dplyr::filter(tp_categoria %in% c("municipal", "estadual"))
+      }
+      if (input$mapa_exibir_escolas == "privada") {
+        d <- d |> dplyr::filter(tp_categoria == "privada")
+      }
+
+
+      d <- d |>
+        dplyr::mutate(color = dplyr::case_when(tp_categoria == "privada" ~ "#415A77FF",
+                                               tp_categoria == "municipal" ~ "#FFB703FF",
+                                               tp_categoria == "estadual" ~ "#C1121FFF"
+                                               )) |>
+        dplyr::mutate(popup = glue::glue("<div><b>Código (MEC): </b>{co_entidade}</div> <div><b>Escola: </b>{no_entidade}</div> <div><b>Rede: </b>{tp_categoria}</div> <div><b>Vagas: </b> <div><b>Creche: </b>{qt_mat_inf_cre}</div> <div><b>Pré-escola: </b>{qt_mat_inf_pre}</div> <div><b>Fundamental I: </b>{qt_mat_fund_ai}</div> <div><b>Fundamental II: </b>{qt_mat_fund_af}</div> "))
+
+        # dplyr::mutate(color = factor(tp_categoria,
+        #                              levels = c("privada", "municipal", "estadual"),
+        #                              labels = c("#415A77", "#FFB703", "#C1121F")))
+
+      # Limpar as colunas
+      d <- d |>
+        dplyr::select(cd_setor, nm_distrito, co_entidade, no_entidade, tp_categoria,
+                      lat, lon, color, popup,
+                      qt_mat_inf_cre, qt_mat_inf_pre, qt_mat_fund_ai, qt_mat_fund_af)
+
+
+      return(d)
+
+    })
+
+    metro_data <- reactive({
+      d <- metro
+
+      d <- metro |>
+        dplyr::filter(modo %in% input$mapa_exibir_metro) |>
+        dplyr::mutate(popup = glue::glue("<div><b>Modo: </b>{modo}</div> <div><b>Corredor: </b>{corredor}</div> <div><b>Estação: </b>{estacao}</div>"))
+
+
+      return(d)
+    })
+
+
 
     # Map ---------------------------------------------------------------------
     output$map <- mapdeck::renderMapdeck({
@@ -298,6 +397,14 @@ mod_sim_map_server <- function(id, state){
       },
       handlerExpr = {
         req(map_shape(), map_data())
+
+
+        if (input$unidade_espacial == "nenhuma") {
+          mapdeck::mapdeck_update(map_id = ns("map")) |>
+            mapdeck::clear_polygon(layer_id = "base")
+
+          return(NULL)
+        }
 
         data_sf <- dplyr::left_join(map_shape(), map_data())
 
@@ -369,5 +476,87 @@ mod_sim_map_server <- function(id, state){
           )
       }
     )
+
+
+    observeEvent(
+      eventExpr = {
+        input$mapa_exibir_escolas
+        school_data()
+      },
+      handlerExpr = {
+        req(school_data(), input$mapa_exibir_escolas)
+
+        mapdeck::mapdeck_update(map_id = ns("map")) |>
+          mapdeck::clear_pointcloud(layer_id = "schools")
+
+        if (nrow(school_data()) > 0) {
+
+          legend <- mapdeck::legend_element(
+            variables = c("Privada", "Municipal", "Estadual"),
+            colours = c("#415a77FF", "#ffb703FF", "#c1121fFF"),
+            colour_type = "fill",
+            variable_type = "category",
+            title = "Escolas"
+          )
+          js_legend <- mapdeck::mapdeck_legend(legend)
+
+          mapdeck::mapdeck_update(map_id = ns("map")) |>
+            mapdeck::add_pointcloud(
+              data = school_data(),
+              lat = "lat",
+              lon = "lon",
+              radius = 8,
+              fill_colour = "color",
+              fill_opacity = 255,
+              highlight_colour = "#eeeeee60",
+              auto_highlight = TRUE,
+              layer_id = "schools",
+              id = "co_entidade",
+              update_view = FALSE,
+              focus_layer = FALSE,
+              tooltip = "popup",
+              palette = NULL,
+
+              legend = js_legend
+
+            )
+        }
+
+      }
+    )
+
+    observeEvent(
+      eventExpr = {
+        input$mapa_exibir_metro
+        metro_data()
+      },
+      handlerExpr = {
+        req(metro_data(), input$mapa_exibir_metro)
+
+        mapdeck::mapdeck_update(map_id = ns("map")) |>
+          mapdeck::clear_pointcloud(layer_id = "metro") |>
+          mapdeck::add_pointcloud(
+            data = metro_data(),
+            lat = "lat",
+            lon = "lon",
+            radius = 8,
+            fill_colour = "modo",
+            fill_opacity = 255,
+            highlight_colour = "#eeeeee60",
+            auto_highlight = TRUE,
+            layer_id = "metro",
+            update_view = FALSE,
+            focus_layer = FALSE,
+            tooltip = "popup",
+            palette = "ygobb",
+            legend = TRUE,
+            legend_options = list(title = "Transporte")
+          )
+
+      }
+    )
+
+
+
   })
 }
