@@ -50,6 +50,8 @@ app_server <- function(input, output, session) {
       description = ""
     ),
 
+    new_scenario = 0,
+
     school_mod = novo_escolas_mod_vazio(),
 
     window_height = 800,

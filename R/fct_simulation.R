@@ -143,6 +143,10 @@ calcular_matriculas_por_hex <- function(escolas) {
                              qt_mat_fund_af = "anos_finais"
   )
 
+  matriculas$tp_categoria <- factor(matriculas$tp_categoria,
+                                    levels = c("Conveniada", "Municipal", "Estadual"),
+                                    labels = c("privada", "municipal", "estadual"))
+
   # prepara dataset final
   matriculas_clean <- matriculas |>
     dplyr::select(id_hex, tp_categoria,

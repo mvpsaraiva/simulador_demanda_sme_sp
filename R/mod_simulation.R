@@ -101,6 +101,7 @@ mod_simulation_server <- function(id, state){
         author = "",
         description = ""
       )
+      state$new_scenario = state$new_scenario + 1
 
       removeModal()
 

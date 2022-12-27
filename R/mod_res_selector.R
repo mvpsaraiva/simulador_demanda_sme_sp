@@ -22,7 +22,7 @@ mod_res_selector_server <- function(id, state){
     ns <- session$ns
 
     df_cenarios <- reactive({
-      req(state$db_con)
+      req(state$db_con, state$new_scenario)
 
       if (DBI::dbExistsTable(state$db_con, "cenarios")) {
         DBI::dbReadTable(state$db_con, "cenarios")
