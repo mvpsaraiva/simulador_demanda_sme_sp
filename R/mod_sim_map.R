@@ -156,23 +156,38 @@ mod_sim_map_server <- function(id, state){
       shinyWidgets::updatePickerInput(session, "filtro_distrito", choices = district_list, selected = "")
     })
 
-    observeEvent(input$filtro_dre, {
-      if (length(input$filtro_dre) > 0) {
+    observeEvent(input$filtro_dre, ignoreNULL = FALSE, {
+      req(setores)
+
+      if (!is.null(input$filtro_dre)) {
+        state$selected_districts = NULL
         state$selected_dres = input$filtro_dre
 
-        shinyWidgets::updatePickerInput(session, "filtro_distrito", selected = "")
-        state$selected_districts = NULL
+        # Distritos da DRE
+        district_list <- setores |>
+          dplyr::filter(nm_dre %in% input$filtro_dre) |>
+          dplyr::pull(nm_distrito) |>
+          unique() |>
+          sort()
+
+        shinyWidgets::updatePickerInput(session, "filtro_distrito", selected = "", choices = district_list)
       } else {
         state$selected_dres = NULL
+        # Distritos
+        district_list <- setores$nm_distrito |>
+          unique() |>
+          sort()
+        shinyWidgets::updatePickerInput(session, "filtro_distrito", choices = district_list, selected = "")
+
       }
     })
 
-    observeEvent(input$filtro_distrito, {
-      if (length(input$filtro_distrito) > 0) {
+    observeEvent(input$filtro_distrito, ignoreNULL = FALSE, {
+      if (!is.null(input$filtro_distrito)) {
         state$selected_districts = input$filtro_distrito
 
-        shinyWidgets::updatePickerInput(session, "filtro_dre", selected = "")
-        state$selected_dres = NULL
+        # shinyWidgets::updatePickerInput(session, "filtro_dre", selected = "")
+        # state$selected_dres = NULL
       } else {
         state$selected_districts = NULL
       }
@@ -230,15 +245,32 @@ mod_sim_map_server <- function(id, state){
       sf_shape <- sf_shape |>
         dplyr::mutate(popup = glue::glue("<div><b>DRE: </b>{nm_dre}</div> <div><b>Distrito: </b>{nm_distrito}</div> <div><b>Setor: </b>{cd_setor}</div>"))
 
-      if (length(input$filtro_dre) == 0 & length(input$filtro_distrito) == 0) {
-        return(sf_shape)
-      } else {
-        if (length(input$filtro_dre) > 0) {
-          return(dplyr::filter(sf_shape, nm_dre %in% input$filtro_dre))
-        } else {
-          return(dplyr::filter(sf_shape, nm_distrito %in% input$filtro_distrito))
-        }
+      if (!is.null(input$filtro_dre)) {
+        sf_shape <- sf_shape |>
+          dplyr::filter(nm_dre %in% input$filtro_dre)
       }
+
+      if (!is.null(input$filtro_distrito)) {
+        sf_shape <- sf_shape |>
+          dplyr::filter(nm_distrito %in% input$filtro_distrito)
+      }
+
+      if (nrow(sf_shape) == 0) {
+        return(NULL)
+      } else {
+        return(sf_shape)
+      }
+
+
+      # if (length(input$filtro_dre) == 0 & length(input$filtro_distrito) == 0) {
+      #   return(sf_shape)
+      # } else {
+      #   if (length(input$filtro_dre) > 0) {
+      #     return()
+      #   } else {
+      #     return(dplyr::filter(sf_shape, )
+      #   }
+      # }
     })
 
     map_data <- reactive({

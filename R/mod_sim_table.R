@@ -28,7 +28,7 @@ mod_sim_table_ui <- function(id){
 
                hr(),
                h4("Opção 2 - Modificações em lote", class = "tile-headline"),
-               p("Esta opção permite modificar a capacidade de várias escolas de uma só vez. Deve ser executada em dois passos:"),
+               p("Esta opção permite modificar a capacidade de várias escolas de uma só vez. Deve ser executada em três passos:"),
                p("2.1 - Faça o download da planilha com as escolas existentes;"),
                downloadButton(ns("btn_download_schools_xls"), "Baixar planilha de escolas"),
 
@@ -326,42 +326,56 @@ mod_sim_table_server <- function(id, state){
 
   observeEvent(input$btn_upload_schools_xls, {
 
-    # read uploaded file
-    file_name <- input$btn_upload_schools_xls$datapath
+    tryCatch(
+      expr = {
+        # read uploaded file
+        file_name <- input$btn_upload_schools_xls$datapath
 
-    xl <- openxlsx::loadWorkbook(file_name)
-    data <- openxlsx::readWorkbook(xl, sheet = "escolas", startRow = 7, colNames = FALSE, skipEmptyRows = TRUE)
+        xl <- openxlsx::loadWorkbook(file_name)
+        data <- openxlsx::readWorkbook(xl, sheet = "escolas", startRow = 7, colNames = FALSE, skipEmptyRows = TRUE)
 
-    colnames(data) <- c("co_entidade", "no_entidade", "tp_categoria", "ds_endereco",
-                        "nm_dre", "nr_distrito", "nm_distrito", "cd_setor",
-                        "orig_mat_creche", "nova_mat_creche",
-                        "orig_mat_pre", "nova_mat_pre",
-                        "orig_mat_fund_ai", "nova_mat_fund_ai",
-                        "orig_mat_fund_af", "nova_mat_fund_af",
-                        "qt_area_edificada", "qt_area_livre_terreno",
-                        "qt_area_ocupada_terreno", "qt_area_total_terreno",
-                        "qt_pavimentos", "qt_salas_utilizadas", "tmi_metro")
+        colnames(data) <- c("co_entidade", "no_entidade", "tp_categoria", "ds_endereco",
+                            "nm_dre", "nr_distrito", "nm_distrito", "cd_setor",
+                            "orig_mat_creche", "nova_mat_creche",
+                            "orig_mat_pre", "nova_mat_pre",
+                            "orig_mat_fund_ai", "nova_mat_fund_ai",
+                            "orig_mat_fund_af", "nova_mat_fund_af",
+                            "qt_area_edificada", "qt_area_livre_terreno",
+                            "qt_area_ocupada_terreno", "qt_area_total_terreno",
+                            "qt_pavimentos", "qt_salas_utilizadas", "tmi_metro")
 
-    data <- data |> dplyr::filter(orig_mat_creche != nova_mat_creche |
-                                    orig_mat_pre != nova_mat_pre |
-                                    orig_mat_fund_ai != nova_mat_fund_ai |
-                                    orig_mat_fund_af != nova_mat_fund_af ) |>
-      dplyr::select(co_entidade, no_entidade,
-                    orig_mat_creche, nova_mat_creche, orig_mat_pre, nova_mat_pre,
-                    orig_mat_fund_ai, nova_mat_fund_ai, orig_mat_fund_af, nova_mat_fund_af)
+        data <- data |> dplyr::filter(orig_mat_creche != nova_mat_creche |
+                                        orig_mat_pre != nova_mat_pre |
+                                        orig_mat_fund_ai != nova_mat_fund_ai |
+                                        orig_mat_fund_af != nova_mat_fund_af ) |>
+          dplyr::select(co_entidade, no_entidade,
+                        orig_mat_creche, nova_mat_creche, orig_mat_pre, nova_mat_pre,
+                        orig_mat_fund_ai, nova_mat_fund_ai, orig_mat_fund_af, nova_mat_fund_af)
 
-    state$school_mod <- state$school_mod |>
-      dplyr::filter(!(co_entidade %in% data$co_entidade))
+        state$school_mod <- state$school_mod |>
+          dplyr::filter(!(co_entidade %in% data$co_entidade))
 
-    state$school_mod <- rbind(state$school_mod, data)
+        state$school_mod <- rbind(state$school_mod, data)
 
-    showModal(
-      modalDialog(
-        title = "Operação concluída",
-        easyClose = TRUE,
-        "Modificações carregadas com sucesso. Verifique o resultado na aba 'Escolas Modificadas'",
-        footer = modalButton("Fechar")
-      )
+        showModal(
+          modalDialog(
+            title = "Operação concluída",
+            easyClose = TRUE,
+            "Modificações carregadas com sucesso. Verifique o resultado na aba 'Escolas Modificadas'",
+            footer = modalButton("Fechar")
+          )
+        )
+      },
+      error = function(e) {
+        showModal(
+          modalDialog(
+            title = "Falha na importação",
+            easyClose = TRUE,
+            "Erro ao carregar modificações. Verifique a se a planilha fornecida está no formato correto e tente novamente.",
+            footer = modalButton("Fechar")
+          )
+        )
+      }
     )
 
   })

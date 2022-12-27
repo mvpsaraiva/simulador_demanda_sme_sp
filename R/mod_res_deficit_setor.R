@@ -37,7 +37,7 @@ mod_res_deficit_setor_ui <- function(id){
                                     selected = "2020",
                                     inline = TRUE,
                                     width = "75px"),
-        # etapa de ensino
+          # etapa de ensino
           shinyWidgets::pickerInput(ns("filtro_etapa"),
                                     label = "Etapa de ensino",
                                     multiple = FALSE,
@@ -47,14 +47,22 @@ mod_res_deficit_setor_ui <- function(id){
                                                 "Fundamental II"),
                                     selected = "Creche",
                                     inline = TRUE,
-                                    width = "200px"),
-          shinyWidgets::pickerInput(ns("var_mapa"),
-                                    label = "Mapear Déficit/Superávit",
-                                    choices = c("Absoluto", "Relativo ao atual"),
-                                    selected = "Absoluto",
+                                    width = "300px"),
+
+          shinyWidgets::pickerInput(ns("var_resultado"),
+                                    label = "Mapear",
+                                    choices = c("Vagas Acessíveis" = "vagas_acessiveis", "Déficit de Vagas" = "deficit", "Superávit de Vagas" = "superavit"),
+                                    selected = NULL,
                                     inline = TRUE,
-                                    width = "200px"),
-          hr(),
+                                    width = "225px"),
+
+          shinyWidgets::pickerInput(ns("var_valor"),
+                                    label = "Valor",
+                                    choices = c("Original" = "or", "Simulado" = "sim", "Diferença (Simulado - Original)" = "rel"),
+                                    selected = NULL,
+                                    inline = TRUE,
+                                    width = "300px"),
+          # hr(),
 
           reactable::reactableOutput(ns("table_deficit"), width = "100%", height = "calc(100vh - 250px)")
         )
@@ -95,17 +103,23 @@ mod_res_deficit_setor_server <- function(id, state){
           dplyr::mutate(serie = factor(serie,
                                        levels = c("creche", "pre", "anos_iniciais", "anos_finais"),
                                        labels = c("Creche", "Pré-Escola", "Fundamental I", "Fundamental II"))) |>
-          dplyr::filter(serie == input$filtro_etapa)
+          dplyr::filter(serie == input$filtro_etapa) |>
+          dplyr::mutate(superavit_or = superavit,
+                        superavit_sim = purrr::map2_dbl(deficit_sim, 0, max),
+                        deficit_sim = purrr::map2_dbl(deficit_sim, 0, min)
+                        )
 
 
 
         def_clean_df <- def_df |>
           dplyr::mutate(vagas_acessiveis_rel = vagas_acessiveis_sim - vagas_acessiveis_or,
-                        deficit_rel = deficit_sim - deficit_or) |>
+                        deficit_rel = deficit_sim - deficit_or,
+                        superavit_rel = superavit_sim - superavit_or) |>
           dplyr::select(id_hex, cd_setor, nm_distrito, serie, ano,
                         populacao = populacao_or,
                         vagas_acessiveis_or, vagas_acessiveis_sim, vagas_acessiveis_rel,
-                        deficit_or, deficit_sim, deficit_rel)
+                        deficit_or, deficit_sim, deficit_rel,
+                        superavit_or, superavit_sim, superavit_rel)
 
       }
 
@@ -118,10 +132,11 @@ mod_res_deficit_setor_server <- function(id, state){
       setor_def <- hex_def() |>
         dplyr::group_by(cd_setor, nm_distrito, serie, ano) |>
         dplyr::summarise(across(.cols = c(populacao, vagas_acessiveis_or, vagas_acessiveis_sim,
-                                          deficit_or, deficit_sim), sum),
+                                          deficit_or, deficit_sim, superavit_or, superavit_sim), sum),
                          .groups = "drop") |>
         dplyr::mutate(vagas_acessiveis_rel = vagas_acessiveis_sim - vagas_acessiveis_or,
-                      deficit_rel = deficit_sim - deficit_or)
+                      deficit_rel = deficit_sim - deficit_or,
+                      superavit_rel = superavit_sim - superavit_or)
 
       return(setor_def)
     })
@@ -132,17 +147,19 @@ mod_res_deficit_setor_server <- function(id, state){
                                             big.mark = ".", decimal.mark = ",")
 
     output$table_deficit <- reactable::renderReactable({
-      req(nrow(setor_def()) > 0, state$window_height)
+      req(nrow(setor_def()) > 0)
 
       sector_def_clean <- setor_def() |>
-        dplyr::select(nm_distrito, cd_setor, serie, ano,
-                      populacao, vagas_acessiveis_or, vagas_acessiveis_sim,
-                      deficit_or, deficit_sim)
+        dplyr::select(nm_distrito, cd_setor, serie, ano, populacao,
+                      vagas_acessiveis_or, vagas_acessiveis_sim, vagas_acessiveis_rel,
+                      deficit_or, deficit_sim, deficit_rel,
+                      superavit_or, superavit_sim, superavit_rel)
 
       reactable::reactable(
         sector_def_clean,
         compact = TRUE,
-        defaultColDef = reactable::colDef(minWidth = 30, footerStyle = "font-weight: bold"),
+        defaultColDef = reactable::colDef(#minWidth = 30,
+                                          footerStyle = "font-weight: bold"),
         highlight = TRUE,
         defaultPageSize = round((state$window_height - 400) / 31),  # 345
         paginationType = "simple",
@@ -152,17 +169,36 @@ mod_res_deficit_setor_server <- function(id, state){
         defaultSorted = list(cd_setor = "asc", serie = "asc", ano = "asc"),
 
         columns = list(
-          nm_distrito = reactable::colDef(name = "Distrito", filterable = TRUE, show = TRUE, minWidth = 30),
-          cd_setor = reactable::colDef(name = "Setor", filterable = TRUE, show = TRUE, minWidth = 30),
-          serie = reactable::colDef(name = "Etapa", filterable = TRUE, show = TRUE, minWidth = 30),
+          nm_distrito = reactable::colDef(name = "Distrito", filterable = TRUE, show = TRUE, minWidth = 100),
+          cd_setor = reactable::colDef(name = "Setor", filterable = TRUE, show = TRUE, minWidth = 60),
+          serie = reactable::colDef(name = "Etapa", filterable = TRUE, show = TRUE, minWidth = 60),
 
-          ano = reactable::colDef(name = "Ano", filterable = TRUE, show = TRUE, minWidth = 25),
+          ano = reactable::colDef(name = "Ano", filterable = TRUE, show = TRUE, minWidth = 45),
 
           populacao = reactable::colDef(name = "Demanda", show = TRUE, footer = footer_total),
-          vagas_acessiveis_or = reactable::colDef(name = "Vagas", show = TRUE, footer = footer_total),
-          vagas_acessiveis_sim = reactable::colDef(name = "Vagas (sim.)", show = TRUE, footer = footer_total),
-          deficit_or = reactable::colDef(name = "Déficit", show = TRUE, footer = footer_total),
-          deficit_sim = reactable::colDef(name = "Déficit (sim.)", show = TRUE, footer = footer_total)
+          vagas_acessiveis_or = reactable::colDef(name = "Qtde. Original", show = TRUE, footer = footer_total,
+                                                  style = list(borderLeft = "1px solid #eee"),
+                                                  headerStyle = list(borderLeft = "1px solid #eee"),
+                                                  footerStyle = list(borderLeft = "1px solid #eee")),
+          vagas_acessiveis_sim = reactable::colDef(name = "Qtde. Simulada", show = TRUE, footer = footer_total),
+          vagas_acessiveis_rel = reactable::colDef(name = "Diferença", show = TRUE, footer = footer_total),
+          deficit_or = reactable::colDef(name = "Original", show = TRUE, footer = footer_total,
+                                         style = list(borderLeft = "1px solid #eee"),
+                                         headerStyle = list(borderLeft = "1px solid #eee"),
+                                         footerStyle = list(borderLeft = "1px solid #eee")),
+          deficit_sim = reactable::colDef(name = "Simulado", show = TRUE, footer = footer_total),
+          deficit_rel = reactable::colDef(name = "Diferença", show = TRUE, footer = footer_total),
+          superavit_or = reactable::colDef(name = "Original", show = TRUE, footer = footer_total,
+                                           style = list(borderLeft = "1px solid #eee"),
+                                           headerStyle = list(borderLeft = "1px solid #eee"),
+                                           footerStyle = list(borderLeft = "1px solid #eee")),
+          superavit_sim = reactable::colDef(name = "Simulado", show = TRUE, footer = footer_total),
+          superavit_rel = reactable::colDef(name = "Diferença", show = TRUE, footer = footer_total)
+        ),
+        columnGroups = list(
+          reactable::colGroup(name = "Vagas Acessíveis", columns = c("vagas_acessiveis_or", "vagas_acessiveis_sim", "vagas_acessiveis_rel")),
+          reactable::colGroup(name = "Déficit", columns = c("deficit_or", "deficit_sim", "deficit_rel")),
+          reactable::colGroup(name = "Superávit", columns = c("superavit_or", "superavit_sim", "superavit_rel"))
         ),
         language = reactable::reactableLang(
           searchPlaceholder = "Pesquisar setores",
@@ -213,7 +249,8 @@ mod_res_deficit_setor_server <- function(id, state){
         input$unidade_espacial
         input$filtro_etapa
         input$filtro_ano
-        input$var_mapa
+        input$var_resultado
+        input$var_valor
       },
       handlerExpr = {
         req(hex_def(), setor_def())
@@ -227,15 +264,35 @@ mod_res_deficit_setor_server <- function(id, state){
           data_sf <- dplyr::left_join(setores, setor_def())
         }
 
-        if (input$var_mapa == "Absoluto") {
-          data_sf <- dplyr::mutate(data_sf, valor = deficit_sim)
-        } else {
-          data_sf <- dplyr::mutate(data_sf, valor = deficit_rel)
-        }
+        # extrai coluna a ser visualizada
+        col_name  <- paste(input$var_resultado, input$var_valor, sep = "_")
+        data_sf <- dplyr::mutate(data_sf, valor = get(col_name))
+
+        # if (input$var_mapa == "Absoluto") {
+        #   data_sf <- dplyr::mutate(data_sf, valor = deficit_sim)
+        # } else {
+        #   data_sf <- dplyr::mutate(data_sf, valor = deficit_rel)
+        # }
 
         data_sf <- dplyr::filter(data_sf, ano == input$filtro_ano)
 
-        data_sf <- dplyr::mutate(data_sf, popup = glue::glue("<div><b>DRE: </b>{nm_dre}</div> <div><b>Distrito: </b>{nm_distrito}</div> <div><b>Setor: </b>{cd_setor}</div>"))
+        data_sf <-
+          dplyr::mutate(data_sf, popup = glue::glue("<div><b>DRE: </b>{nm_dre}</div> <div><b>Distrito: </b>{nm_distrito}</div> <div><b>Setor: </b>{cd_setor}</div>")) |>
+
+          dplyr::mutate(popup = glue::glue("{popup} <div><br><b>Vagas Acessíveis: </b></div>")) |>
+          dplyr::mutate(popup = glue::glue("{popup} <div><b>Original: </b>{vagas_acessiveis_or}</div>")) |>
+          dplyr::mutate(popup = glue::glue("{popup} <div><b>Simulação: </b>{vagas_acessiveis_sim}</div>")) |>
+          dplyr::mutate(popup = glue::glue("{popup} <div><b>Diferença: </b>{vagas_acessiveis_rel}</div>")) |>
+
+          dplyr::mutate(popup = glue::glue("{popup} <div><br><b>Déficit de Vagas: </b></div>")) |>
+          dplyr::mutate(popup = glue::glue("{popup} <div><b>Original: </b>{deficit_or}</div>")) |>
+          dplyr::mutate(popup = glue::glue("{popup} <div><b>Simulação: </b>{deficit_sim}</div>")) |>
+          dplyr::mutate(popup = glue::glue("{popup} <div><b>Diferença: </b>{deficit_rel}</div>")) |>
+
+          dplyr::mutate(popup = glue::glue("{popup} <div><br><b>Superávit de Vagas: </b></div>")) |>
+          dplyr::mutate(popup = glue::glue("{popup} <div><b>Original: </b>{superavit_or}</div>")) |>
+          dplyr::mutate(popup = glue::glue("{popup} <div><b>Simulação: </b>{superavit_sim}</div>")) |>
+          dplyr::mutate(popup = glue::glue("{popup} <div><b>Diferença: </b>{superavit_rel}</div>"))
 
         # create legend
         legend_converter <- function (x) as.integer(x)
@@ -259,7 +316,7 @@ mod_res_deficit_setor_server <- function(id, state){
 
         l$colours <- l$colours[2:(length(l$colours)-1)]
 
-        legend_title = input$var_mapa
+        legend_title = input$var_resultado
 
         legend <- mapdeck::legend_element(
           variables = legend_converter(l$summary_values)
@@ -272,8 +329,6 @@ mod_res_deficit_setor_server <- function(id, state){
 
 
         data_sf$color <- l$colours
-        data_sf <- data_sf |>
-          dplyr::mutate(popup = glue::glue("{popup} <div><b>{legend_title}: </b>{valor}</div>"))
 
         mapdeck::mapdeck_update(map_id = ns("map_deficit")) |>
           mapdeck::clear_polygon(layer_id = "base") |>

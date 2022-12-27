@@ -58,7 +58,8 @@ mod_res_summary_server <- function(id, state){
       reactable::reactable(
         school_mod(),
         compact = TRUE,
-        defaultColDef = reactable::colDef(minWidth = 40, footerStyle = "font-weight: bold"),
+        defaultColDef = reactable::colDef(#minWidth = 40,
+                                          footerStyle = "font-weight: bold"),
         highlight = TRUE,
         defaultPageSize = round((state$window_height - 220) / 31),  # 345
         paginationType = "simple",
@@ -77,21 +78,27 @@ mod_res_summary_server <- function(id, state){
           nm_distrito = reactable::colDef(name = "Distrito", filterable = TRUE, show = TRUE),
           cd_setor = reactable::colDef(name = "Setor", filterable = TRUE, show = TRUE),
           co_entidade = reactable::colDef(name = "Código (MEC)", filterable = TRUE, show = FALSE),
-          no_entidade = reactable::colDef(name = "Escola", filterable = TRUE, class = "area-link", minWidth = 150),
+          no_entidade = reactable::colDef(name = "Escola", filterable = TRUE, class = "area-link", minWidth = 200),
           tp_categoria = reactable::colDef(name = "Rede", filterable = TRUE, show = TRUE),
-          tmi_metro = reactable::colDef(name = "Metrô (min)", filterable = FALSE, show = TRUE),
+          tmi_metro = reactable::colDef(name = "Tempo ao Metrô (min)", filterable = FALSE, show = TRUE, minWidth = 150),
 
-          orig_mat_creche = reactable::colDef(name = "CRE orig", footer = footer_total),
-          nova_mat_creche = reactable::colDef(name = "CRE nova", footer = footer_total),
+          orig_mat_creche = reactable::colDef(name = "Qtde. Original", footer = footer_total),
+          nova_mat_creche = reactable::colDef(name = "Nova Qtde.", footer = footer_total),
 
-          orig_mat_pre = reactable::colDef(name = "PRE orig", footer = footer_total),
-          nova_mat_pre = reactable::colDef(name = "PRE nova", footer = footer_total),
+          orig_mat_pre = reactable::colDef(name = "Qtde. Original", footer = footer_total),
+          nova_mat_pre = reactable::colDef(name = "Nova Qtde.", footer = footer_total),
 
-          orig_mat_fund_ai = reactable::colDef(name = "F I orig", footer = footer_total),
-          nova_mat_fund_ai = reactable::colDef(name = "F I nova", footer = footer_total),
+          orig_mat_fund_ai = reactable::colDef(name = "Qtde. Original", footer = footer_total),
+          nova_mat_fund_ai = reactable::colDef(name = "Nova Qtde.", footer = footer_total),
 
-          orig_mat_fund_af = reactable::colDef(name = "F II orig", footer = footer_total),
-          nova_mat_fund_af = reactable::colDef(name = "F II nova", footer = footer_total)
+          orig_mat_fund_af = reactable::colDef(name = "Qtde. Original", footer = footer_total),
+          nova_mat_fund_af = reactable::colDef(name = "Nova Qtde.", footer = footer_total)
+        ),
+        columnGroups = list(
+          reactable::colGroup(name = "Vagas de Creche", columns = c("orig_mat_creche", "nova_mat_creche")),
+          reactable::colGroup(name = "Vagas de Pré-escola", columns = c("orig_mat_pre", "nova_mat_pre")),
+          reactable::colGroup(name = "Vagas de Fundamental I", columns = c("orig_mat_fund_ai", "nova_mat_fund_ai")),
+          reactable::colGroup(name = "Vagas de Fundamental II", columns = c("orig_mat_fund_af", "nova_mat_fund_af"))
         ),
         language = reactable::reactableLang(
           searchPlaceholder = "Pesquisar escolas",

@@ -9,3 +9,13 @@ deficit_bfca_hex <- DBI::dbReadTable(db_con, "deficit_bfca_hex") |>
   dplyr::ungroup()
 
 usethis::use_data(deficit_bfca_hex, overwrite = TRUE)
+
+
+db_con <- DBI::dbConnect(RSQLite::SQLite(), "data/demanda_sme_simulations.db")
+DBI::dbListTables(db_con)
+
+deficit_bfca_hex <- DBI::dbReadTable(db_con, "deficit_por_hex") |>
+  dplyr::filter(cutoff == 15, id_cenario == 3) |>
+  dplyr::mutate(superavit = purrr::map2_dbl(deficit, 0, max),
+                deficit = purrr::map2_dbl(deficit, 0, min)) |>
+  dplyr::ungroup()

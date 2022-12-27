@@ -37,7 +37,7 @@ mod_results_ui <- function(id){
                    style = "margin: 5px; padding: 5px;",
                    mod_res_summary_area_ui("res_summary_area")
           ),
-          tabPanel(title = "Resultado (déficit ou superávit)",
+          tabPanel(title = "Déficit / Superávit)",
                    style = "margin: 5px; padding: 5px;",
                    mod_res_deficit_setor_ui("res_deficit_setor")
           )

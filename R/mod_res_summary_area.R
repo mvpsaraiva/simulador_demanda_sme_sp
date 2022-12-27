@@ -40,7 +40,7 @@ mod_res_summary_area_ui <- function(id){
                                     width = "180px"),
           shinyWidgets::pickerInput(ns("var_mapa"),
                                     label = "Mapear vagas",
-                                    choices = c("Vagas Atuais", "Vagas Projetadas", "Diferença"),
+                                    choices = c("Vagas Atuais", "Vagas Simuladas", "Diferença"),
                                     selected = "Diferença",
                                     inline = TRUE,
                                     width = "180px"),
@@ -252,10 +252,13 @@ mod_res_summary_area_server <- function(id, state){
           cd_setor = reactable::colDef(name = "Setor", filterable = TRUE, show = TRUE),
           etapa = reactable::colDef(name = "Etapa", filterable = TRUE, show = TRUE),
 
-          orig = reactable::colDef(name = "Vagas Atuais", footer = footer_total),
-          nova = reactable::colDef(name = "Vagas Projetadas", footer = footer_total),
+          orig = reactable::colDef(name = "Atuais", footer = footer_total),
+          nova = reactable::colDef(name = "Simulação", footer = footer_total),
           dif = reactable::colDef(name = "Diferença", footer = footer_total)
 
+        ),
+        columnGroups = list(
+          reactable::colGroup(name = "Vagas", columns = c("orig", "nova", "dif"))
         ),
         language = reactable::reactableLang(
           searchPlaceholder = "Pesquisar setores",
@@ -316,7 +319,7 @@ mod_res_summary_area_server <- function(id, state){
       # variável selecionada para plotar
       var_selecionada <- switch (input$var_mapa,
                                  "Vagas Atuais" = "orig",
-                                 "Vagas Projetadas" = "nova",
+                                 "Vagas Simuladas" = "nova",
                                  "Diferença" = "dif"
       )
 
@@ -346,7 +349,7 @@ mod_res_summary_area_server <- function(id, state){
       # variável selecionada para plotar
       var_selecionada <- switch (input$var_mapa,
                                  "Vagas Atuais" = "orig",
-                                 "Vagas Projetadas" = "nova",
+                                 "Vagas Simuladas" = "nova",
                                  "Diferença" = "dif"
                                  )
 
@@ -397,6 +400,7 @@ mod_res_summary_area_server <- function(id, state){
         )
     })
 
+    legend_converter <- function (x) as.integer(x)
 
     observeEvent(
       eventExpr = {
@@ -406,13 +410,10 @@ mod_res_summary_area_server <- function(id, state){
       handlerExpr = {
         req(map_shape(), map_data())
 
-        # browser()
         data_sf <- dplyr::left_join(map_shape(), map_data()) |>
           dplyr::mutate(valor = highlight_var)
 
         # create legend
-        legend_converter <- function (x) as.integer(x)
-
         l_palette <- "viridis"
         l_values <- c(data_sf$valor)
 
