@@ -60,6 +60,11 @@ mod_results_server <- function(id, state){
       return(state$scenario_selected)
     })
 
+    make_xl_formula <- function(xl_function = "SUM", i_col, start_row, end_row) {
+      formula = glue::glue("{xl_function}({i_col}{start_row}:{i_col}{end_row})")
+
+    }
+
     output$download_xlsx <- downloadHandler(
       filename = function() {
         id_cenario <- cenario_atual()
@@ -71,6 +76,12 @@ mod_results_server <- function(id, state){
 
         temp_xls <- file
         file.copy("data/template_resultados.xlsx", temp_xls)
+
+        # carrega DRE para referencia
+        dre_df <- sf::st_set_geometry(setores, NULL) |>
+          dplyr::select(cd_dre, nm_dre) |>
+          dplyr::distinct()
+
 
         # Carrega dados do cenário simulado
         cenario <- DBI::dbGetQuery(state$db_con,
@@ -105,7 +116,7 @@ mod_results_server <- function(id, state){
         # Combina resultados simulados e atuais
         deficit_por_hex_joined <- dplyr::inner_join(deficit_por_hex, deficit_por_hex_orig,
                                                     by = c("id_hex", "ano", "faixa_idade", "etapa", "serie"),
-                                                    suffix = c("_or", "_sim")) |>
+                                                    suffix = c("_sim", "_or")) |>
           dplyr::mutate(vagas_acessiveis_rel = vagas_acessiveis_sim - vagas_acessiveis_or,
                         deficit_rel = deficit_sim - deficit_or,
                         superavit_rel = superavit_sim - superavit_or) |>
@@ -119,28 +130,105 @@ mod_results_server <- function(id, state){
         deficit_por_setor <- deficit_por_hex_joined |>
           dplyr::group_by(id_cenario, nr_distrito, nm_distrito, cd_dre, cd_setor,
                           ano, faixa_idade, etapa, serie) |>
-          dplyr::summarise(dplyr::across(.cols = c(populacao, matriculas,
+          dplyr::summarise(dplyr::across(.cols = c(populacao,
                                                    vagas_acessiveis_or, vagas_acessiveis_sim, vagas_acessiveis_rel,
                                                    deficit_or, deficit_sim, deficit_rel,
                                                    superavit_or, superavit_sim, superavit_rel),
                                          .fns = sum, na.rm = TRUE), .groups = "drop")
 
+        # prepara dataframe wide para Excel - Setor
+        deficit_por_setor_wide <- deficit_por_setor |>
+          dplyr::left_join(dre_df, by = "cd_dre") |>
+          tidyr::pivot_wider(names_from = ano, values_from = c(populacao,
+                                                               vagas_acessiveis_or, vagas_acessiveis_sim, vagas_acessiveis_rel,
+                                                               deficit_or, deficit_sim, deficit_rel,
+                                                               superavit_or, superavit_sim, superavit_rel)) |>
+          dplyr::select(cd_dre, nm_dre, nr_distrito, nm_distrito, cd_setor, serie, dplyr::ends_with("2020"), dplyr::ends_with("2035"), dplyr::ends_with("2045")) |>
+          dplyr::mutate(serie = factor(serie,
+                                       levels = c("creche", "pre", "anos_iniciais", "anos_finais"),
+                                       labels = c("Creche", "Pré-escola", "Fundamental I", "Fundamental II"))) |>
+          tidyr::drop_na()
+
+
         deficit_por_distrito <- deficit_por_setor |>
           dplyr::group_by(id_cenario, nr_distrito, nm_distrito, cd_dre,
                           ano, faixa_idade, etapa, serie) |>
-          dplyr::summarise(dplyr::across(.cols = c(populacao, matriculas,
+          dplyr::summarise(dplyr::across(.cols = c(populacao,
                                                    vagas_acessiveis_or, vagas_acessiveis_sim, vagas_acessiveis_rel,
                                                    deficit_or, deficit_sim, deficit_rel,
                                                    superavit_or, superavit_sim, superavit_rel),
                                          .fns = sum, na.rm = TRUE), .groups = "drop")
+
+        # prepara dataframe wide para Excel - Distrito
+        deficit_por_distrito_wide <- deficit_por_distrito |>
+          dplyr::left_join(dre_df, by = "cd_dre") |>
+          tidyr::pivot_wider(names_from = ano, values_from = c(populacao,
+                                                               vagas_acessiveis_or, vagas_acessiveis_sim, vagas_acessiveis_rel,
+                                                               deficit_or, deficit_sim, deficit_rel,
+                                                               superavit_or, superavit_sim, superavit_rel)) |>
+          dplyr::select(cd_dre, nm_dre, nr_distrito, nm_distrito, serie, dplyr::ends_with("2020"), dplyr::ends_with("2035"), dplyr::ends_with("2045")) |>
+          dplyr::mutate(serie = factor(serie,
+                                       levels = c("creche", "pre", "anos_iniciais", "anos_finais"),
+                                       labels = c("Creche", "Pré-escola", "Fundamental I", "Fundamental II"))) |>
+          tidyr::drop_na()
 
 
         template_xl <- openxlsx::loadWorkbook(temp_xls)
 
         openxlsx::writeData(template_xl, sheet = "r_cenario", x = cenario)
-        openxlsx::writeData(template_xl, sheet = "Modificações", x = modificacoes, colNames = FALSE, startRow = 8)
-        openxlsx::writeData(template_xl, sheet = "r_deficit_distrito", x = deficit_por_distrito)
-        openxlsx::writeData(template_xl, sheet = "r_deficit_setor", x = deficit_por_setor)
+
+        # Modificações
+        st_row = 8
+        en_row = st_row + nrow(modificacoes) - 1
+        fn_row = en_row + 1
+        openxlsx::writeData(template_xl, sheet = "Modificações", x = modificacoes, colNames = FALSE, startRow = st_row)
+
+        # totals for columns I (9) to T (20)
+        openxlsx::writeData(template_xl, sheet = "Modificações", x = "Totais", startRow = fn_row, startCol = 8)
+        formulas <- lapply(LETTERS[9:20], make_xl_formula, xl_function = "SUM", start_row = st_row, end_row = en_row) |> unlist()
+        for (i in 9:20) {
+          openxlsx::writeFormula(template_xl, sheet = "Modificações", x = formulas[i-8], startRow = fn_row, startCol = i)
+        }
+
+        # formatação das bordas
+        st_thick_border <- openxlsx::createStyle(border = "Left", borderStyle = "medium")
+        st_thick_border_bottom <- openxlsx::createStyle(border = "Bottom", borderStyle = "medium")
+        st_thick_border_bold <- openxlsx::createStyle(border = "TopBottom", borderStyle = "medium", textDecoration = "bold")
+
+        ## blocos de dados, borda grossa com fonte normal
+        ### bloco Escola
+        openxlsx::addStyle(template_xl, sheet = "Modificações", style = st_thick_border, rows = st_row:en_row, cols = 1, gridExpand = TRUE)
+        ### bloco DRE
+        openxlsx::addStyle(template_xl, sheet = "Modificações", style = st_thick_border, rows = st_row:en_row, cols = 4, gridExpand = TRUE)
+        ### bloco Distrito
+        openxlsx::addStyle(template_xl, sheet = "Modificações", style = st_thick_border, rows = st_row:en_row, cols = 6, gridExpand = TRUE)
+        ### bloco Setor
+        openxlsx::addStyle(template_xl, sheet = "Modificações", style = st_thick_border, rows = st_row:(en_row + 1), cols = 8, gridExpand = TRUE)
+        ### bloco Creche
+        openxlsx::addStyle(template_xl, sheet = "Modificações", style = st_thick_border, rows = st_row:en_row, cols = 9, gridExpand = TRUE)
+        ### bloco Pré-escola
+        openxlsx::addStyle(template_xl, sheet = "Modificações", style = st_thick_border, rows = st_row:en_row, cols = 12, gridExpand = TRUE)
+        ### bloco Fundamental I
+        openxlsx::addStyle(template_xl, sheet = "Modificações", style = st_thick_border, rows = st_row:en_row, cols = 15, gridExpand = TRUE)
+        ### bloco Fundamental II
+        openxlsx::addStyle(template_xl, sheet = "Modificações", style = st_thick_border, rows = st_row:en_row, cols = 18, gridExpand = TRUE)
+
+        ## linha de totais, borda grossa com fonte em negrito
+        openxlsx::addStyle(template_xl, sheet = "Modificações", style = st_thick_border_bold, rows = fn_row, cols = 8:20, gridExpand = TRUE, stack = TRUE)
+
+        ### fechamento
+        openxlsx::addStyle(template_xl, sheet = "Modificações", style = st_thick_border, rows = st_row:(en_row + 1), cols = 21, gridExpand = TRUE)
+        openxlsx::addStyle(template_xl, sheet = "Modificações", style = st_thick_border_bottom, rows = en_row, cols = 1:7, gridExpand = TRUE, stack = TRUE)
+
+        # Resultados por Setor
+        openxlsx::writeData(template_xl, sheet = "Resultados por Setor", x = deficit_por_setor_wide, startRow = 8, colNames = FALSE)
+
+        # Resultados por Distrito
+        openxlsx::writeData(template_xl, sheet = "Resultados por Distrito", x = deficit_por_distrito_wide, startRow = 8, colNames = FALSE)
+
+
+        # openxlsx::writeData(template_xl, sheet = "r_deficit_distrito", x = deficit_por_distrito)
+        # openxlsx::writeData(template_xl, sheet = "r_deficit_setor", x = deficit_por_setor)
 
         openxlsx::saveWorkbook(template_xl, temp_xls, overwrite = TRUE)
       })
