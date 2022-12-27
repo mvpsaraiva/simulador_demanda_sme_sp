@@ -60,7 +60,9 @@ mod_sim_map_ui <- function(id){
                                            multiple = FALSE,
                                            choices = c("Demanda (estudantes)" = "demanda",
                                                        "Oferta (vagas)" = "oferta",
-                                                       "Resultado (déficit ou superávit)" = "resultado"),
+                                                       "Déficit de vagas" = "deficit",
+                                                       "Superávit de vagas" = "superavit"
+                                                       ),
                                            selected = "demanda",
                                            inline = TRUE,
                                            width = "500px"),
@@ -94,20 +96,18 @@ mod_sim_map_ui <- function(id){
                                                        "2045" = 2045),
                                            selected = "2020",
                                            inline = TRUE,
-                                           width = "200px"),
+                                           width = "200px"
+                                           ),
                  # mapear escolas
                  div(
                    p("Exibir escolas"),
-                   shinyWidgets::radioGroupButtons(
+                   shinyWidgets::checkboxGroupButtons(
                      inputId = ns("mapa_exibir_escolas"),
                      label = NULL, # "Exibir escolas",
-                     choices = c("Nenhuma" = "nenhuma",
-                                 "Todas" = "todas",
-                                 "Privadas" = "privada",
-                                 "Públicas" = "publica",
-                                 "Municipais" = "municipal",
-                                 "Estaduais" = "estadual"),
-                     selected = "nenhuma",
+                     choices = c("Conveniadas" = "Conveniada",
+                                 "Municipais" = "Municipal",
+                                 "Estaduais" = "Estadual"),
+                     selected = NULL,
                      individual = TRUE
                    )
                  ),
@@ -197,14 +197,14 @@ mod_sim_map_server <- function(id, state){
         }
       }
 
-      if (input$mapa_variavel == "resultado") {
-        # resultado = déficit de vagas, calculado via bfca
-        # remover opção de selecionar multiplas etapas
-        if (length(input$mapa_etapa) > 1) {
-          shinyWidgets::updatePickerInput(session, "mapa_etapa",
-                                          selected = input$mapa_etapa[1])
-        }
-      }
+      # if (input$mapa_variavel == "resultado") {
+      #   # resultado = déficit de vagas, calculado via bfca
+      #   # remover opção de selecionar multiplas etapas
+      #   if (length(input$mapa_etapa) > 1) {
+      #     shinyWidgets::updatePickerInput(session, "mapa_etapa",
+      #                                     selected = input$mapa_etapa[1])
+      #   }
+      # }
 
     })
 
@@ -272,11 +272,11 @@ mod_sim_map_server <- function(id, state){
         return(oferta)
       }
 
-      if (input$mapa_variavel == "resultado") {
+      if (input$mapa_variavel == "deficit") {
         resultado <- deficit_bfca_hex |>
           dplyr::filter(serie %in% input$mapa_etapa, ano == req(input$mapa_ano)) |>
           dplyr::group_by(id_hex) |>
-          dplyr::summarise(valor = sum(deficit), .groups = "drop")
+          dplyr::summarise(valor = sum(abs(deficit), na.rm = TRUE), .groups = "drop")
 
         if (input$unidade_espacial == "setores_sme") {
           resultado <- dplyr::left_join(resultado, hexgrid_setor_lookup, by = "id_hex") |>
@@ -287,6 +287,20 @@ mod_sim_map_server <- function(id, state){
         return(resultado)
       }
 
+      if (input$mapa_variavel == "superavit") {
+        resultado <- deficit_bfca_hex |>
+          dplyr::filter(serie %in% input$mapa_etapa, ano == req(input$mapa_ano)) |>
+          dplyr::group_by(id_hex) |>
+          dplyr::summarise(valor = sum(superavit, na.rm = TRUE), .groups = "drop")
+
+        if (input$unidade_espacial == "setores_sme") {
+          resultado <- dplyr::left_join(resultado, hexgrid_setor_lookup, by = "id_hex") |>
+            dplyr::group_by(cd_setor) |>
+            dplyr::summarise(valor = sum(valor, na.rm = TRUE), .groups = "drop")
+        }
+
+        return(resultado)
+      }
     })
 
     ## Filter data -------------------------------
@@ -294,7 +308,9 @@ mod_sim_map_server <- function(id, state){
       # req(state$state$id)
 
       # Todas as escolas
-      d <- escolas
+      d <- escolas |>
+        dplyr::filter(tp_categoria %in% input$mapa_exibir_escolas)
+
 
       # Filtrar DRE ou Distrito
       if (length(state$selected_dres) > 0) {
@@ -306,34 +322,12 @@ mod_sim_map_server <- function(id, state){
           dplyr::filter(nm_distrito %in% state$selected_districts)
       }
 
-      # nenhuma escola... código da entidade nunca é vazio
-      if (input$mapa_exibir_escolas == "nenhuma") {
-        d <- d |> dplyr::filter(is.null(co_entidade))
-      }
-      if (input$mapa_exibir_escolas == "estadual") {
-        d <- d |> dplyr::filter(tp_categoria == "estadual")
-      }
-      if (input$mapa_exibir_escolas == "municipal") {
-        d <- d |> dplyr::filter(tp_categoria == "municipal")
-      }
-      if (input$mapa_exibir_escolas == "publica") {
-        d <- d |> dplyr::filter(tp_categoria %in% c("municipal", "estadual"))
-      }
-      if (input$mapa_exibir_escolas == "privada") {
-        d <- d |> dplyr::filter(tp_categoria == "privada")
-      }
-
-
       d <- d |>
-        dplyr::mutate(color = dplyr::case_when(tp_categoria == "privada" ~ "#415A77FF",
-                                               tp_categoria == "municipal" ~ "#FFB703FF",
-                                               tp_categoria == "estadual" ~ "#C1121FFF"
+        dplyr::mutate(color = dplyr::case_when(tp_categoria == "Conveniada" ~ "#415A77FF",
+                                               tp_categoria == "Municipal" ~ "#FFB703FF",
+                                               tp_categoria == "Estadual" ~ "#C1121FFF"
                                                )) |>
         dplyr::mutate(popup = glue::glue("<div><b>Código (MEC): </b>{co_entidade}</div> <div><b>Escola: </b>{no_entidade}</div> <div><b>Rede: </b>{tp_categoria}</div> <div><b>Vagas: </b> <div><b>Creche: </b>{qt_mat_inf_cre}</div> <div><b>Pré-escola: </b>{qt_mat_inf_pre}</div> <div><b>Fundamental I: </b>{qt_mat_fund_ai}</div> <div><b>Fundamental II: </b>{qt_mat_fund_af}</div> "))
-
-        # dplyr::mutate(color = factor(tp_categoria,
-        #                              levels = c("privada", "municipal", "estadual"),
-        #                              labels = c("#415A77", "#FFB703", "#C1121F")))
 
       # Limpar as colunas
       d <- d |>
@@ -414,11 +408,17 @@ mod_sim_map_server <- function(id, state){
         l_palette <- "viridis"
         l_values <- c(data_sf$valor)
 
-        if (input$mapa_variavel == "resultado") {
-          l_palette <- "rdbu"
+        if (input$mapa_variavel == "deficit") {
+          l_palette <- "reds"
 
-          max_value <- max(abs(l_values))
-          l_values <- c(-max_value, l_values, max_value)
+          # max_value <- max(abs(l_values))
+          # l_values <- c(-max_value, l_values, max_value)
+        }
+        if (input$mapa_variavel == "superavit") {
+          l_palette <- "blues"
+
+          # max_value <- max(abs(l_values))
+          # l_values <- c(-max_value, l_values, max_value)
         }
 
         l <- colourvalues::colour_values(
@@ -429,15 +429,16 @@ mod_sim_map_server <- function(id, state){
         )
 
 
-        if (input$mapa_variavel == "resultado") {
-          l$colours <- l$colours[2:(length(l$colours)-1)]
-        }
+        # if (input$mapa_variavel == "resultado") {
+        #   l$colours <- l$colours[2:(length(l$colours)-1)]
+        # }
 
         legend_title = switch (
           input$mapa_variavel,
           "demanda" = "Demanda (estudantes)",
           "oferta" = "Oferta (vagas)",
-          "resultado" = "Resultado (déficit ou superávit)"
+          "deficit" = "Déficit de vagas",
+          "superavit" = "Superávit de vagas"
         )
 
         legend <- mapdeck::legend_element(
@@ -484,15 +485,13 @@ mod_sim_map_server <- function(id, state){
         school_data()
       },
       handlerExpr = {
-        req(school_data(), input$mapa_exibir_escolas)
-
         mapdeck::mapdeck_update(map_id = ns("map")) |>
           mapdeck::clear_pointcloud(layer_id = "schools")
 
         if (nrow(school_data()) > 0) {
 
           legend <- mapdeck::legend_element(
-            variables = c("Privada", "Municipal", "Estadual"),
+            variables = c("Conveniada", "Municipal", "Estadual"),
             colours = c("#415a77FF", "#ffb703FF", "#c1121fFF"),
             colour_type = "fill",
             variable_type = "category",
@@ -531,11 +530,13 @@ mod_sim_map_server <- function(id, state){
         metro_data()
       },
       handlerExpr = {
-        req(metro_data(), input$mapa_exibir_metro)
-
         mapdeck::mapdeck_update(map_id = ns("map")) |>
-          mapdeck::clear_pointcloud(layer_id = "metro") |>
-          mapdeck::add_pointcloud(
+          mapdeck::clear_pointcloud(layer_id = "metro")
+
+        if (nrow(metro_data()) > 0) {
+
+          mapdeck::mapdeck_update(map_id = ns("map")) |>
+            mapdeck::add_pointcloud(
             data = metro_data(),
             lat = "lat",
             lon = "lon",
@@ -552,6 +553,7 @@ mod_sim_map_server <- function(id, state){
             legend = TRUE,
             legend_options = list(title = "Transporte")
           )
+        }
 
       }
     )

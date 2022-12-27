@@ -122,7 +122,7 @@ mod_simulacao_server <- function(id, db_con) {
 
     table_df <- reactive({
       escolas_df <-
-        escolas$data |> dplyr::filter(tp_categoria != "privada")
+        escolas$data |> dplyr::filter(tp_categoria != "Conveniada")
       setores_df <-
         DBI::dbReadTable(db_con, "setores_sme") |> dplyr::select(-geometry)
       distritos_df <-

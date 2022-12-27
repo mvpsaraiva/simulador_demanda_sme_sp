@@ -49,8 +49,11 @@ prepare_sector_deficit_data <- function(escolas_df, codigo) {
 
   deficit <- deficit_bfca_setor |>
     dplyr::filter(cd_setor == setor, cutoff == 15) |>
-    dplyr::select(ano, serie, deficit) |>
-    tidyr::pivot_wider(names_from = ano, values_from = deficit)
+    dplyr::select(ano, serie, deficit, superavit) |>
+    tidyr::pivot_wider(names_from = ano, values_from = c(deficit, superavit)) |>
+    dplyr::mutate(serie = factor(serie,
+                                 levels = c("creche", "pre", "anos_iniciais", "anos_finais"),
+                                 labels = c("Creche", "Pré-escola", "Fund. I", "Fund. II")))
 
   return(deficit)
 
@@ -65,8 +68,11 @@ prepare_district_deficit_data <- function(escolas_df, codigo) {
 
   deficit <- deficit_bfca_distrito |>
     dplyr::filter(nr_distrito == distrito, cutoff == 15) |>
-    dplyr::select(ano, serie, deficit) |>
-    tidyr::pivot_wider(names_from = ano, values_from = deficit)
+    dplyr::select(ano, serie, deficit, superavit) |>
+    tidyr::pivot_wider(names_from = ano, values_from = c(deficit, superavit)) |>
+    dplyr::mutate(serie = factor(serie,
+                                 levels = c("creche", "pre", "anos_iniciais", "anos_finais"),
+                                 labels = c("Creche", "Pré-escola", "Fund. I", "Fund. II")))
 
   return(deficit)
 

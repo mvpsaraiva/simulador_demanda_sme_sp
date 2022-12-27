@@ -12,7 +12,7 @@ mod_sim_school_ui <- function(id){
   tagList(
     # fluidRow(
     div(
-      style = "margin: 10px; padding: 10px; height: 100%; overflow-y: auto",
+      style = "margin: 10px; padding: 10px; height: 100%; width: 100%; overflow-y: auto",
       uiOutput(ns("school_details"))
     )
     # )
@@ -31,6 +31,8 @@ mod_sim_school_server <- function(id, state){
     })
 
     # Headline ----------------------------------------------------------------
+    footer_total <- function(values) format(sum(values, na.rm = TRUE),
+                                            big.mark = ".", decimal.mark = ",")
 
     output$school_details <- renderUI({
       req(state$school_selected)
@@ -55,11 +57,82 @@ mod_sim_school_server <- function(id, state){
           div(
             # style = "margin: 10px; padding: 10px; overflow-y: auto",
             tagList(
-              h4(paste0("Déficit por Distrito - ", escola()$nm_distrito[1]), class = "tile-headline"),
-              renderTable({deficit_distrito}, colnames = TRUE, width = "100%"),
+              h4(paste0("Déficit / Superávit por Distrito - ", escola()$nm_distrito[1]), class = "tile-headline"),
+              reactable::reactable({deficit_distrito},
+                                   compact = TRUE,
+                                   highlight = TRUE,
+                                   pagination = FALSE,
+                                   searchable = FALSE,
+                                   resizable = TRUE,
+                                   wrap = FALSE,
+                                   fullWidth = TRUE,
+                                   defaultColDef = reactable::colDef(minWidth = 50),
+                                   columns = list(
+                                     serie = reactable::colDef(name = "Série", sticky = "left", minWidth = 85,
+                                                               style = list(borderRight = "1px solid #eee"),
+                                                               headerStyle = list(borderRight = "1px solid #eee")),
 
-              h4(paste0("Déficit por Setor - ", escola()$cd_setor[1]), class = "tile-headline"),
-              renderTable({deficit_setor}, colnames = TRUE, width = "100%"),
+                                     deficit_2020 = reactable::colDef(name = "2020", footer = footer_total),
+                                     deficit_2035 = reactable::colDef(name = "2035", footer = footer_total),
+                                     deficit_2045 = reactable::colDef(name = "2045", footer = footer_total),
+
+                                     superavit_2020 = reactable::colDef(name = "2020",
+                                                                        footer = footer_total,
+                                                                        style = list(borderLeft = "1px solid #eee"),
+                                                                        headerStyle = list(borderLeft = "1px solid #eee")),
+                                     superavit_2035 = reactable::colDef(name = "2035", footer = footer_total),
+                                     superavit_2045 = reactable::colDef(name = "2045", footer = footer_total)
+                                   ),
+                                   columnGroups = list(
+                                     reactable::colGroup(name = "Déficit",
+                                                         columns = c("deficit_2020", "deficit_2035", "deficit_2045")
+                                     ),
+                                     reactable::colGroup(name = "Superávit",
+                                                         columns = c("superavit_2020", "superavit_2035", "superavit_2045")
+                                     )
+                                   )
+
+              ),
+
+              hr(),
+
+              h4(paste0("Déficit / Superávit por Setor - ", escola()$cd_setor[1]), class = "tile-headline"),
+              reactable::reactable({deficit_setor},
+                                   compact = TRUE,
+                                   highlight = TRUE,
+                                   pagination = FALSE,
+                                   searchable = FALSE,
+                                   resizable = TRUE,
+                                   wrap = FALSE,
+                                   fullWidth = TRUE,
+                                   defaultColDef = reactable::colDef(minWidth = 50),
+                                   columns = list(
+                                     serie = reactable::colDef(name = "Série", sticky = "left", minWidth = 85,
+                                                               style = list(borderRight = "1px solid #eee"),
+                                                               headerStyle = list(borderRight = "1px solid #eee")),
+
+                                     deficit_2020 = reactable::colDef(name = "2020", footer = footer_total),
+                                     deficit_2035 = reactable::colDef(name = "2035", footer = footer_total),
+                                     deficit_2045 = reactable::colDef(name = "2045", footer = footer_total),
+
+                                     superavit_2020 = reactable::colDef(name = "2020",
+                                                                        footer = footer_total,
+                                                                        style = list(borderLeft = "1px solid #eee"),
+                                                                        headerStyle = list(borderLeft = "1px solid #eee")),
+                                     superavit_2035 = reactable::colDef(name = "2035", footer = footer_total),
+                                     superavit_2045 = reactable::colDef(name = "2045", footer = footer_total)
+                                   ),
+                                   columnGroups = list(
+                                     reactable::colGroup(name = "Déficit",
+                                                         columns = c("deficit_2020", "deficit_2035", "deficit_2045")
+                                     ),
+                                     reactable::colGroup(name = "Superávit",
+                                                         columns = c("superavit_2020", "superavit_2035", "superavit_2045")
+                                     )
+                                   )
+              ),
+
+              hr(),
 
               # dados da escola
               h4(escola()$no_entidade[1], class = "tile-headline"),

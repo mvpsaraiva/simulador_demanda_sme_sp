@@ -46,6 +46,9 @@ escolas <-
   ) |>
   dplyr::arrange(cd_setor, no_entidade)
 
+escolas$tp_categoria <- factor(escolas$tp_categoria,
+                               levels = c("privada", "municipal", "estadual"),
+                               labels = c("Conveniada", "Municipal", "Estadual"))
 
 
 usethis::use_data(escolas, overwrite = TRUE)
