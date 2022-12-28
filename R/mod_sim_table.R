@@ -15,6 +15,12 @@ mod_sim_table_ui <- function(id){
     tabPanel(title = "Escolas",
              reactable::reactableOutput(ns("table_schools"), width = "100%", height = "100%")
     ),
+    tabPanel(title = "Escolas Adicionadas",
+             actionButton(inputId = ns("btn_add_school"),
+                          label = "Adicionar Escola"
+                          ),
+             reactable::reactableOutput(ns("table_added_schools"), width = "100%", height = "100%")
+    ),
     tabPanel(title = "Escolas Modificadas",
              reactable::reactableOutput(ns("table_modified_schools"), width = "100%", height = "100%")
     ),
@@ -103,6 +109,10 @@ mod_sim_table_server <- function(id, state){
 
     school_mod <- reactive({
       state$school_mod
+    })
+
+    school_add <- reactive({
+      state$school_add
     })
 
 
@@ -229,6 +239,78 @@ mod_sim_table_server <- function(id, state){
           pageNumbers = "{page} de {pages}"
         )
       )
+
+    })
+
+
+# Escolas Adicionadas -----------------------------------------------------
+
+    output$table_added_schools <- reactable::renderReactable({
+      req(school_add(), state$window_height)
+
+      schools_df <- school_add() |>
+        dplyr::select(co_entidade, no_entidade, nm_dre, nm_distrito, cd_setor,
+                      qt_mat_inf_cre, qt_mat_inf_pre, qt_mat_fund_ai, qt_mat_fund_af)
+
+      sticky_style <- list(backgroundColor = "#f7f7f7")
+
+      reactable::reactable(
+        schools_df,
+        compact = TRUE,
+        defaultColDef = reactable::colDef(#minWidth = 40,
+          footerStyle = "font-weight: bold", resizable = TRUE),
+        highlight = TRUE,
+        defaultPageSize = round((state$window_height - 220) / 31),  # 345
+        paginationType = "simple",
+        searchable = TRUE,
+        wrap = FALSE,
+        selection = "multiple",
+        # onClick = onclick_js,
+        defaultSorted = list(no_entidade = "asc"),
+
+        # theme = reactable::reactableTheme(
+        #   rowSelectedStyle = list(backgroundColor = "#eee", boxShadow = "inset 2px 0 0 0 #ffa62d")
+        # ),
+
+        columns = list(
+          co_entidade = reactable::colDef(name = "Código", filterable = TRUE, show = TRUE), #, sticky = "left", style = sticky_style),
+          no_entidade = reactable::colDef(name = "Nome", filterable = TRUE, class = "area-link", minWidth = 150),
+
+          nm_dre = reactable::colDef(name = "DRE", filterable = TRUE, minWidth = 70),
+          nm_distrito = reactable::colDef(name = "Distrito", filterable = TRUE, minWidth = 70),
+          cd_setor = reactable::colDef(name = "Setor", filterable = TRUE, minWidth = 70),
+
+          qt_mat_inf_cre = reactable::colDef(name = "Creche", footer = footer_total),
+          qt_mat_inf_pre = reactable::colDef(name = "Pré-escola", footer = footer_total),
+          qt_mat_fund_ai = reactable::colDef(name = "Fundamental I", footer = footer_total),
+          qt_mat_fund_af = reactable::colDef(name = "Fundamental II", footer = footer_total)
+        ),
+        columnGroups = list(
+          reactable::colGroup(name = "Vagas", columns = c("qt_mat_inf_cre", "qt_mat_inf_pre", "qt_mat_fund_ai", "qt_mat_fund_af"))
+        ),
+        language = reactable::reactableLang(
+          searchPlaceholder = "Pesquisar escolas",
+          noData = "Nenhuma escola encontrada",
+          pageInfo = "{rowStart}\u2013{rowEnd} de {rows} escolas",
+          pagePrevious = "\u276e",
+          pageNext = "\u276f",
+          pageNumbers = "{page} de {pages}"
+        )
+      )
+
+    })
+
+    observeEvent(input$btn_add_school, {
+
+      showModal(modalDialog(
+        size = "l",
+        easyClose = TRUE,
+        mod_sim_add_school_ui("sim_add_school"),
+        footer = tagList(
+          modalButton("Cancelar"),
+          actionButton(ns("btn_run"), "Adicionar")
+        )
+      ))
 
     })
 

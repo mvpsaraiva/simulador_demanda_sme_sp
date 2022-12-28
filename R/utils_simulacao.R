@@ -24,3 +24,15 @@ novo_escolas_mod_vazio <- function() {
 
   return(escolas)
 }
+
+# connection <- db_con
+carrega_novas_escolas <- function(connection) {
+  if (!DBI::dbExistsTable(connection, "novas_escolas")) {
+    novas_escolas <- escolas[NULL, ]
+
+    DBI::dbWriteTable(connection, name = "novas_escolas", value = novas_escolas)
+  }
+
+  novas_escolas <- DBI::dbReadTable(connection, "novas_escolas")
+  return(novas_escolas)
+}

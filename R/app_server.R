@@ -53,6 +53,7 @@ app_server <- function(input, output, session) {
     new_scenario = 0,
 
     school_mod = novo_escolas_mod_vazio(),
+    school_add = carrega_novas_escolas(con),
 
     window_height = 800,
     map_id = NULL,
@@ -71,6 +72,7 @@ app_server <- function(input, output, session) {
   mod_sim_map_server("sim_map", app_state)
   mod_sim_school_server("sim_school", app_state)
   mod_sim_edit_school_server("sim_edit_school", app_state)
+  mod_sim_add_school_server("sim_add_school", app_state)
   mod_sim_run_server("sim_run", app_state)
 
   mod_results_server("results", app_state)
