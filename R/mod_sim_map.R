@@ -112,6 +112,17 @@ mod_sim_map_ui <- function(id){
                    )
                  ),
                  div(
+                   p("Exibir escolas adicionais"),
+                   shinyWidgets::radioGroupButtons(
+                     inputId = ns("mapa_exibir_escolas_adicionais"),
+                     label = NULL, # "Exibir escolas",
+                     choices = c("Sim" = "sim",
+                                 "Não" = "nao"),
+                     selected = "nao",
+                     individual = TRUE
+                   )
+                 ),
+                 div(
                    p("Exibir estações de transporte público"),
                    shinyWidgets::checkboxGroupButtons(
                      inputId = ns("mapa_exibir_metro"),
@@ -372,6 +383,43 @@ mod_sim_map_server <- function(id, state){
 
     })
 
+    added_school_data <- reactive({
+      # req(state$state$id)
+
+      # Todas as escolas
+      d <- state$school_add
+
+      # Filtrar DRE ou Distrito
+      if (length(state$selected_dres) > 0) {
+        d <- d |>
+          dplyr::filter(nm_dre %in% state$selected_dres)
+      }
+      if (length(state$selected_districts) > 0) {
+        d <- d |>
+          dplyr::filter(nm_distrito %in% state$selected_districts)
+      }
+
+      # identificar escolas selecionadas na tabela
+      d <- d |>
+        dplyr::mutate(ativa = dplyr::if_else(co_entidade %in% state$added_school_selected, "sim", "nao"),
+                      color = dplyr::if_else(co_entidade %in% state$added_school_selected, "#FF00FFFF", "#ddddddFF"))
+          # co_entidade %in% state$added_school_selected)
+
+
+      d <- d |>
+        dplyr::mutate(popup = glue::glue("<div><b>Código: </b>{co_entidade}</div> <div><b>Escola: </b>{no_entidade}</div> <div><b>Vagas: </b> <div><b>Creche: </b>{qt_mat_inf_cre}</div> <div><b>Pré-escola: </b>{qt_mat_inf_pre}</div> <div><b>Fundamental I: </b>{qt_mat_fund_ai}</div> <div><b>Fundamental II: </b>{qt_mat_fund_af}</div> "))
+
+      # Limpar as colunas
+      d <- d |>
+        dplyr::select(cd_setor, nm_distrito, co_entidade, no_entidade, tp_categoria,
+                      lat, lon, color, popup,
+                      qt_mat_inf_cre, qt_mat_inf_pre, qt_mat_fund_ai, qt_mat_fund_af)
+
+
+      return(d)
+
+    })
+
     metro_data <- reactive({
       d <- metro
 
@@ -496,7 +544,7 @@ mod_sim_map_server <- function(id, state){
             highlight_colour = "#eeeeee60",
             auto_highlight = TRUE,
             layer_id = "base",
-            id = "cd_setor",
+            id = "id_hex",
             update_view = FALSE,
             focus_layer = FALSE,
             tooltip = "popup",
@@ -558,10 +606,56 @@ mod_sim_map_server <- function(id, state){
 
     observeEvent(
       eventExpr = {
+        input$mapa_exibir_escolas_adicionais
+        added_school_data()
+      },
+      handlerExpr = {
+        mapdeck::mapdeck_update(map_id = ns("map")) |>
+          mapdeck::clear_pointcloud(layer_id = "new_schools")
+
+        if ((nrow(added_school_data()) > 0) & (input$mapa_exibir_escolas_adicionais == "sim")) {
+
+          legend <- mapdeck::legend_element(
+            variables = c("Ativa", "Inativa"),
+            colours = c("#FF00FFFF", "#ddddddFF"),
+            colour_type = "fill",
+            variable_type = "category",
+            title = "Escolas Adicionais"
+          )
+          js_legend <- mapdeck::mapdeck_legend(legend)
+
+          mapdeck::mapdeck_update(map_id = ns("map")) |>
+            mapdeck::add_pointcloud(
+              data = added_school_data(),
+              lat = "lat",
+              lon = "lon",
+              radius = 8,
+              fill_colour = "color",
+              fill_opacity = 255,
+              highlight_colour = "#eeeeee60",
+              auto_highlight = TRUE,
+              layer_id = "new_schools",
+              id = "co_entidade",
+              update_view = FALSE,
+              focus_layer = FALSE,
+              tooltip = "popup",
+              palette = NULL,
+
+              legend = js_legend
+
+            )
+        }
+
+      }
+    )
+
+    observeEvent(
+      eventExpr = {
         input$mapa_exibir_metro
         metro_data()
       },
       handlerExpr = {
+
         mapdeck::mapdeck_update(map_id = ns("map")) |>
           mapdeck::clear_pointcloud(layer_id = "metro")
 
@@ -589,6 +683,22 @@ mod_sim_map_server <- function(id, state){
 
       }
     )
+
+    observeEvent({input$map_polygon_click}, {
+      # lst <- jsonlite::fromJSON( js )
+
+      # browser()
+      # showModal(modalDialog(title = "click", input$map_polygon_click))
+
+      # print(input$map_polygon_click)
+
+      lst <- jsonlite::fromJSON(input$map_polygon_click)
+
+      state$new_school_coords <- paste(lst$lat, lst$lon, sep = ", ")
+      # showModal(modalDialog(title = "click", state$new_school_coords))
+
+    })
+
 
 
 

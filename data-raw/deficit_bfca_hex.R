@@ -19,3 +19,11 @@ deficit_bfca_hex <- DBI::dbReadTable(db_con, "deficit_por_hex") |>
   dplyr::mutate(superavit = purrr::map2_dbl(deficit, 0, max),
                 deficit = purrr::map2_dbl(deficit, 0, min)) |>
   dplyr::ungroup()
+
+
+df <- DBI::dbReadTable(db_con, "adicoes")
+
+df |>
+  filter(id_cenario == 16) |>
+  left_join(hexgrid)
+

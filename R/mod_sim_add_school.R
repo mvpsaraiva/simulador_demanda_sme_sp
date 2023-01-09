@@ -17,6 +17,7 @@ mod_sim_add_school_ui <- function(id){
       ),
       gridlayout::grid_card(
         "data",
+        p(),
         h4("Adicionar Escola", class = "tile-headline"),
         # textInput(inputId = ns("co_entidade"),
         #           label = "Código",
@@ -27,34 +28,49 @@ mod_sim_add_school_ui <- function(id){
                   label = "Nome",
                   placeholder = "Nome da Escola",
                   width = "100%"),
-        # textInput(inputId = ns("cd_setor"),
-        #           label = "Setor",
-        #           placeholder = "Setor",
-        #           width="100%"),
-        # textInput(inputId = ns("nm_distrito"),
-        #           label = "Distrito",
-        #           placeholder = "Distrito",
-        #           width="100%"),
-        # textInput(inputId = ns("nm_dre"),
-        #           label = "DRE",
-        #           placeholder = "DRE",
-        #           width="100%"),
-        numericInput(inputId = ns("lat"),
-                     label = "Latitude",
-                     value = -23.64986,
-                     width="100%"),
-        numericInput(inputId = ns("lon"),
-                     label = "Longitude",
-                     value = -46.64806,
-                     width="100%"),
-        numericInput(inputId = ns("qt_mat_inf_cre"),
-                     label = "Vagas de Creche",
-                     value = 0,
-                     width="100%"),
-        numericInput(inputId = ns("qt_mat_inf_cre"),
-                     label = "Vagas de Creche",
-                     value = 0,
-                     width="100%"),
+        textInput(inputId = ns("cd_setor"),
+                  label = "Setor",
+                  placeholder = "Setor",
+                  width="100%"),
+        textInput(inputId = ns("nm_distrito"),
+                  label = "Distrito",
+                  placeholder = "Distrito",
+                  width="100%"),
+        textInput(inputId = ns("nm_dre"),
+                  label = "DRE",
+                  placeholder = "DRE",
+                  width="100%"),
+        hr(),
+        h4("Número de Vagas", class = "tile-headline"),
+        p("* Capacidade sugerida de acordo com o déficit de vagas no entorno da nova escola, considerando 15 minutos de caminhada."),
+        splitLayout(cellWidths = c("25%", "75%"),
+          textOutput(outputId = ns("lbl_creche")),
+          numericInput(inputId = ns("qt_mat_inf_cre"),
+                       label = "Vagas de Creche",
+                       value = 0,
+                       width="100%")
+        ),
+        splitLayout(cellWidths = c("25%", "75%"),
+          textOutput(outputId = ns("lbl_pre")),
+          numericInput(inputId = ns("qt_mat_inf_pre"),
+                       label = "Vagas de Creche",
+                       value = 0,
+                       width="100%")
+        ),
+        splitLayout(cellWidths = c("25%", "75%"),
+          textOutput(outputId = ns("lbl_fund_ai")),
+          numericInput(inputId = ns("qt_mat_fund_ai"),
+                       label = "Vagas de Creche",
+                       value = 0,
+                       width="100%")
+        ),
+        splitLayout(cellWidths = c("25%", "75%"),
+          textOutput(outputId = ns("lbl_fund_af")),
+          numericInput(inputId = ns("qt_mat_fund_af"),
+                       label = "Vagas de Creche",
+                       value = 0,
+                       width="100%")
+        )
       )
     )
 
@@ -68,51 +84,45 @@ mod_sim_add_school_server <- function(id, state){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
 
-    output$map <- leaflet::renderLeaflet({
-      leaflet::leaflet() |>
-        leaflet::addTiles()
-      })
+    output$lbl_creche <- renderText("Creche")
+    output$lbl_pre <- renderText("Pré-escola")
+    output$lbl_fund_ai <- renderText("Fundamental I")
+    output$lbl_fund_af <- renderText("Fundamental II")
 
-    output$map <- leaflet::renderLeaflet({
-      state$map_id <- ns("map")
+    observeEvent(state$new_school, {
 
-      leaflet::leaflet(
-        # options = leaflet
-        style = "mapbox://styles/mapbox/light-v9",
-        location = state$centroid,
-        zoom = 9,
-        min_zoom = 8
-      )
+      isolate(updateTextInput(session, "no_entidade", value = state$add_school$no_entidade))
+
+      isolate(updateTextInput(session, "cd_setor", value = state$add_school$cd_setor))
+      isolate(updateTextInput(session, "nm_distrito", value = state$add_school$nm_distrito))
+      isolate(updateTextInput(session, "nm_dre", value = state$add_school$nm_dre))
+
+      isolate(updateNumericInput(session, "qt_mat_inf_cre", value = isolate(state$add_school$qt_mat_inf_cre)))
+      isolate(updateNumericInput(session, "qt_mat_inf_pre", value = isolate(state$add_school$qt_mat_inf_pre)))
+      isolate(updateNumericInput(session, "qt_mat_fund_ai", value = isolate(state$add_school$qt_mat_fund_ai)))
+      isolate(updateNumericInput(session, "qt_mat_fund_af", value = isolate(state$add_school$qt_mat_fund_af)))
+
+      shinyjs::disable("cd_setor")
+      shinyjs::disable("nm_distrito")
+      shinyjs::disable("nm_dre")
 
     })
 
+    observeEvent(input$no_entidade, { state$add_school$no_entidade = isolate({input$no_entidade}) })
 
-    observe({
-      click = input$map_click
-      mapdeck::mapdeck_update(map_id = ns("map")) |>
-        mapdeck::clear_pointcloud(layer_id = "new_school") |>
-        mapdeck::add_pointcloud(
-            data = data.frame(lon = click$lng, lat = click$lat),
-            lat = "lat",
-            lon = "lon",
-            fill_colour = "red",
-            fill_opacity = 255,
-            highlight_colour = "orange",
-            auto_highlight = TRUE,
-            layer_id = "new_school",
-            id = "co_entidade",
-            update_view = FALSE,
-            focus_layer = FALSE,
-            tooltip = "popup",
-            stroke_width = 15,
-            stroke_colour = "#404040ff",
-            stroke_opacity = 255
-          )
-      # map
+    observeEvent(input$qt_mat_inf_cre, {
+      state$add_school$qt_mat_inf_cre = isolate({input$qt_mat_inf_cre})
+    })
+    observeEvent(input$qt_mat_inf_pre, {
+      state$add_school$qt_mat_inf_pre = isolate({input$qt_mat_inf_pre})
+    })
+    observeEvent(input$qt_mat_fund_ai, {
+      state$add_school$qt_mat_fund_ai = isolate({input$qt_mat_fund_ai})
+    })
+    observeEvent(input$qt_mat_fund_af, {
+      state$add_school$qt_mat_fund_af = isolate({input$qt_mat_fund_af})
+    })
 
-      # leaflet::leafletProxy('map') |>
-      #   leaflet::addMarkers(lng = click$lng, lat = click$lat)
-    }) |> bindEvent(input$map_click)
 
   })
 }

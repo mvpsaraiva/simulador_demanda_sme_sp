@@ -11,9 +11,9 @@ mod_simulation_ui <- function(id){
   ns <- NS(id)
     tagList(
       gridlayout::grid_container(
-        layout = c("      1fr    1fr  300px    ",
-                   "1fr   table  map details",
-                   "75px  table  map run    "
+        layout = c("      1fr    1fr  350px    ",
+                   "1fr   table  map  details",
+                   "75px  table  map  run    "
         ),
         gridlayout::grid_card(
           "table",
@@ -74,6 +74,20 @@ mod_simulation_server <- function(id, state){
       )
 
       # criar novo cenário de simulação
+
+      # consolidar escolas
+      schools_new <- state$school_add |>
+        dplyr::filter(co_entidade %in% state$added_school_selected)
+
+        # dplyr::mutate(orig_mat_creche = 0, orig_mat_pre = 0,
+        #               orig_mat_fund_ai = 0, orig_mat_fund_af = 0) |>
+        # dplyr::select(co_entidade, no_entidade, id_hex,
+        #               orig_mat_creche, nova_mat_creche = qt_mat_inf_cre,
+        #               orig_mat_pre, nova_mat_pre = qt_mat_inf_pre,
+        #               orig_mat_fund_ai, nova_mat_fund_ai = qt_mat_fund_ai,
+        #               orig_mat_fund_af, nova_mat_fund_af = qt_mat_fund_af
+        # )
+
       # consolidar elementos necessários à simulação em uma lista
       cenario <- list(
         id = -1,
@@ -82,6 +96,7 @@ mod_simulation_server <- function(id, state){
         autor = state$edit_scenario$author, #  input$cenario_autor,
         descricao = state$edit_scenario$description, #  input$cenario_descricao,
         escolas_mod = state$school_mod,
+        escolas_new = schools_new,
         escolas = escolas,
         populacao = populacao_por_hex,
         ttm = ttm,

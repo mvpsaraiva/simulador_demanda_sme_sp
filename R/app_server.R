@@ -54,6 +54,9 @@ app_server <- function(input, output, session) {
 
     school_mod = novo_escolas_mod_vazio(),
     school_add = carrega_novas_escolas(con),
+    add_school = list(),
+    new_school = 0,
+    added_school_selected = c(),
 
     window_height = 800,
     map_id = NULL,

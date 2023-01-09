@@ -63,8 +63,9 @@ mod_res_selector_server <- function(id, state){
         defaultColDef = reactable::colDef(minWidth = 30, footerStyle = "font-weight: bold"),
         highlight = TRUE,
         selection = "single",
-        defaultPageSize = 10, # round((state$window_height - 220) / 31),  # 345
-        paginationType = "simple",
+        pagination = FALSE,
+        # defaultPageSize = 10, # round((state$window_height - 220) / 31),  # 345
+        # paginationType = "simple",
         # searchable = TRUE,
         wrap = FALSE,
         onClick = "select", # onclick_js,

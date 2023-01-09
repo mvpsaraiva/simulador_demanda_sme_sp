@@ -8,16 +8,25 @@
 
 create_new_scenario <- function(data) {
 
+  # browser()
   # buscar matrículas das escolas modificadas no cenário
-  escolas_df <- dplyr::left_join(data$escolas, data$escolas_mod, by = "co_entidade") |>
+  escolas_df <- dplyr::left_join(data$escolas, data$escolas_mod, by = c("co_entidade", "no_entidade")) |>
     dplyr::mutate(qt_mat_inf_cre = dplyr::if_else(is.na(nova_mat_creche), qt_mat_inf_cre, as.integer(nova_mat_creche)),
                   qt_mat_inf_pre = dplyr::if_else(is.na(nova_mat_pre), qt_mat_inf_pre, as.integer(nova_mat_pre)),
                   qt_mat_fund_ai = dplyr::if_else(is.na(nova_mat_fund_ai), qt_mat_fund_ai, as.integer(nova_mat_fund_ai)),
                   qt_mat_fund_af = dplyr::if_else(is.na(nova_mat_fund_af), qt_mat_fund_af, as.integer(nova_mat_fund_af))
-                  )
+                  ) |>
+    dplyr::select(co_entidade:tmi_metro)
+
+  escolas_new_df <- data$escolas_new |>
+    dplyr::mutate(tp_categoria = "Municipal")
+
+  escolas_full <- rbind(escolas_df, escolas_new_df) |>
+    # algumas escolas foram salvas com id_hex maiúsculo... corrigir
+    dplyr::mutate(id_hex = tolower(id_hex))
 
   # recalcular matrículas por hexágono
-  matriculas_por_hex <- calcular_matriculas_por_hex(escolas_df)
+  matriculas_por_hex <- calcular_matriculas_por_hex(escolas_full)
 
   # calcular bfca
   bfca_tempos_viagem <- c(15)
@@ -93,6 +102,15 @@ persist_scenario <- function(db_con, data) {
     data$escolas_mod <- dplyr::select(data$escolas_mod, id_cenario, dplyr::everything())
 
     DBI::dbWriteTable(db_con, name = "modificacoes", value = data$escolas_mod, append = TRUE)
+  }
+
+  # browser()
+  # escolas adicionadas
+  if (nrow(data$escolas_new) > 0) {
+    data$escolas_new$id_cenario <- new_id
+    data$escolas_new <- dplyr::select(data$escolas_new, id_cenario, dplyr::everything())
+
+    DBI::dbWriteTable(db_con, name = "adicoes", value = data$escolas_new, append = TRUE)
   }
 
   # déficit por hexágono

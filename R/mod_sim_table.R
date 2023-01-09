@@ -16,10 +16,28 @@ mod_sim_table_ui <- function(id){
              reactable::reactableOutput(ns("table_schools"), width = "100%", height = "100%")
     ),
     tabPanel(title = "Escolas Adicionadas",
-             actionButton(inputId = ns("btn_add_school"),
-                          label = "Adicionar Escola"
-                          ),
-             reactable::reactableOutput(ns("table_added_schools"), width = "100%", height = "100%")
+             div(
+               h4("Adicionar escola", class = "tile-headline"),
+               # p("Opção 1 - Informe as coordenadas geográficas da nova escola, separadas por vírgula (podem ser copiadas do Google Maps, p. ex.); ou"),
+               p("1. Clique no mapa ao lado para preencher as coordenadas;"),
+               p("2. Clique em ADICIONAR ESCOLA para preencher o restante dos dados."),
+               splitLayout(
+                 textInput(ns("text_coordenadas"), label = "Coordenadas", placeholder = "-23.550620, -46.633298"),
+                 # numericInput(ns("num_lat"), label = "Lat", value = -23.64986),
+                 # numericInput(ns("num_lon"), label = "Lon", value = -46.64806),
+                 actionButton(inputId = ns("btn_add_school"), label = "Adicionar Escola")
+               ),
+             ),
+             # hr(),
+             div(
+               p("Selecione abaixo as escolas a serem ativadas nesta simulação."),
+               reactable::reactableOutput(ns("table_added_schools"), width = "100%", height = "60vh"),
+               splitLayout(
+                 cellWidths = 150,
+                 actionButton(inputId = ns("btn_edit_school"), label = "Editar Escola"),
+                 actionButton(inputId = ns("btn_delete_school"), label = "Excluir Escola")
+               )
+             )
     ),
     tabPanel(title = "Escolas Modificadas",
              reactable::reactableOutput(ns("table_modified_schools"), width = "100%", height = "100%")
@@ -134,9 +152,15 @@ mod_sim_table_server <- function(id, state){
       }
     })
 
-
-    footer_total <- function(values) format(sum(values, na.rm = TRUE),
-                                            big.mark = ".", decimal.mark = ",")
+    footer_total <- reactable::JS(
+      "function(column, state) {
+          let total = 0
+          state.sortedData.forEach(function(row) {
+            total += row[column.id]
+          })
+          return total.toLocaleString(2)
+        }"
+      )
 
     output$table_schools <- reactable::renderReactable({
       req(df_escolas(), state$window_height)
@@ -245,6 +269,29 @@ mod_sim_table_server <- function(id, state){
 
 # Escolas Adicionadas -----------------------------------------------------
 
+    new_school_coords <- reactive({
+      state$new_school_coords
+    })
+
+    selected_rows_added_school <- reactive({
+      req(school_add())
+
+      table_state <- reactable::getReactableState("table_added_schools")
+      return(table_state$selected)
+    })
+
+    observeEvent(selected_rows_added_school(), {
+      row_index <- selected_rows_added_school()
+
+      if (is.null(row_index)) {
+        state$added_school_selected <- -1
+      } else {
+        selected_school <- school_add()[row_index,]
+        state$added_school_selected <- selected_school$co_entidade
+      }
+    })
+
+
     output$table_added_schools <- reactable::renderReactable({
       req(school_add(), state$window_height)
 
@@ -260,17 +307,19 @@ mod_sim_table_server <- function(id, state){
         defaultColDef = reactable::colDef(#minWidth = 40,
           footerStyle = "font-weight: bold", resizable = TRUE),
         highlight = TRUE,
-        defaultPageSize = round((state$window_height - 220) / 31),  # 345
-        paginationType = "simple",
+        # defaultPageSize = round((state$window_height - 500) / 31),  # 345
+        # paginationType = "simple",
+        # showPagination = TRUE,
+        pagination = FALSE,
         searchable = TRUE,
         wrap = FALSE,
         selection = "multiple",
         # onClick = onclick_js,
-        defaultSorted = list(no_entidade = "asc"),
+        defaultSorted = list(co_entidade = "asc"),
 
-        # theme = reactable::reactableTheme(
-        #   rowSelectedStyle = list(backgroundColor = "#eee", boxShadow = "inset 2px 0 0 0 #ffa62d")
-        # ),
+        theme = reactable::reactableTheme(
+          rowSelectedStyle = list(backgroundColor = "#eee", boxShadow = "inset 2px 0 0 0 #ffa62d")
+        ),
 
         columns = list(
           co_entidade = reactable::colDef(name = "Código", filterable = TRUE, show = TRUE), #, sticky = "left", style = sticky_style),
@@ -300,20 +349,291 @@ mod_sim_table_server <- function(id, state){
 
     })
 
+    observeEvent(new_school_coords(), {
+      isolate(updateTextInput(session, "text_coordenadas", value = new_school_coords()))
+    })
+
+
+# add school --------------------------------------------------------------
+
+
     observeEvent(input$btn_add_school, {
 
+      state$add_school = list()
+
+      # extrair coordenadas do input
+      coords <- input$text_coordenadas
+      coords_n <- strsplit(coords, split = ",") |> unlist() |> as.numeric()
+      coord_lat <- coords_n[1]
+      coord_lon <- coords_n[2]
+
+      is_valid_lat <- is.finite(coord_lat) & abs(coord_lat) <= 90
+      is_valid_lon <- is.finite(coord_lon) & abs(coord_lon) <= 180
+
+      if ((is_valid_lat & is_valid_lon) == FALSE) {
+        showModal(modalDialog(
+          size = "s",
+          easyClose = TRUE,
+          "As coordenadas informadas são inválidas."
+        ))
+
+        return(NULL)
+      }
+
+      # identificar se as coordenadas estão dentro da área de estudo
+      hex <- h3jsr::point_to_cell(input = c(coord_lon, coord_lat), res = 9)
+      is_valid <- hex %in% hexgrid$id_hex |> unlist()
+
+      if (is_valid == FALSE) {
+        showModal(modalDialog(
+          size = "s",
+          easyClose = TRUE,
+          "As coordenadas informadas encontram-se fora da área de estudo."
+        ))
+
+        return(NULL)
+      }
+
+      localizacao_df <- hexgrid |>
+        sf::st_set_geometry(NULL) |>
+        dplyr::filter(id_hex == hex) |>
+        dplyr::left_join(hexgrid_setor_lookup) |>
+        dplyr::left_join(tmi_metro) |>
+        dplyr::left_join(sf::st_set_geometry(setores, NULL))
+
+      deficit_df <- ttm |>
+        dplyr::filter(from_id == hex, travel_time <= 15) |>
+        dplyr::left_join(deficit_bfca_hex, by = c("to_id" = "id_hex")) |>
+        dplyr::filter(ano == 2020) |>
+        dplyr::group_by(serie) |>
+        dplyr::summarise(deficit = sum(deficit)) |>
+        tidyr::pivot_wider(names_from = serie, values_from = deficit)
+
+      if (nrow(deficit_df) == 0) {
+        deficit_df <- data.frame(
+          qt_mat_inf_cre = 0,
+          qt_mat_inf_pre = 0,
+          qt_mat_fund_ai = 0,
+          qt_mat_fund_af = 0
+        )
+      }
+
+      state$add_school = list(
+        co_entidade = 0,
+        no_entidade = paste(localizacao_df$nm_dre[1], localizacao_df$nm_distrito[1], sep = " - "),
+        cd_setor = localizacao_df$cd_setor[1],
+        nr_distrito = localizacao_df$nr_distrito[1],
+        nm_distrito = localizacao_df$nm_distrito[1],
+        cd_dre = localizacao_df$cd_dre[1],
+        nm_dre = localizacao_df$nm_dre[1],
+        id_hex = hex,
+        lat = coord_lat,
+        lon = coord_lon,
+
+        qt_mat_inf_cre = abs(deficit_df$creche[1]),
+        qt_mat_inf_pre = abs(deficit_df$pre[1]),
+        qt_mat_fund_ai = abs(deficit_df$anos_iniciais[1]),
+        qt_mat_fund_af = abs(deficit_df$anos_finais[1]),
+
+        tmi_metro = localizacao_df$travel_time[1]
+
+        # new_school = TRUE
+      )
+
+      state$new_school = state$new_school + 1
+
       showModal(modalDialog(
-        size = "l",
+        size = "m",
         easyClose = TRUE,
         mod_sim_add_school_ui("sim_add_school"),
         footer = tagList(
           modalButton("Cancelar"),
-          actionButton(ns("btn_run"), "Adicionar")
+          actionButton(ns("btn_add"), "Adicionar")
         )
       ))
 
+
     })
 
+    observeEvent(input$btn_add, {
+
+      nova_escola <- data.frame(
+        co_entidade = 0,
+        no_entidade = state$add_school$no_entidade,
+        tp_categoria = "Municipal",
+        # ds_endereco = "",
+        cd_setor = state$add_school$cd_setor,
+        nr_distrito = state$add_school$nr_distrito,
+        nm_distrito = state$add_school$nm_distrito,
+        cd_dre = state$add_school$cd_dre,
+        nm_dre = state$add_school$nm_dre,
+        id_hex = state$add_school$id_hex,
+        lat = state$add_school$lat,
+        lon = state$add_school$lon,
+
+        qt_mat_inf_cre = state$add_school$qt_mat_inf_cre,
+        qt_mat_inf_pre = state$add_school$qt_mat_inf_pre,
+        qt_mat_fund_ai = state$add_school$qt_mat_fund_ai,
+        qt_mat_fund_af = state$add_school$qt_mat_fund_af,
+
+        tmi_metro = state$add_school$tmi_metro
+      ) |>
+        # converte nome da escola para maiúsculas, para combinar com informações do censo escolar
+        dplyr::mutate(no_entidade = toupper(no_entidade))
+
+      state$school_add <- adiciona_escola(state$db_con, nova_escola)
+      state$add_school = list()
+
+      removeModal()
+    })
+
+
+# delete school -----------------------------------------------------------
+
+
+    observeEvent(input$btn_delete_school, {
+
+      if (is.null(state$added_school_selected)) {
+        showModal(modalDialog(
+          size = "s",
+          easyClose = TRUE,
+          "Selecione ao menos uma escola para excluí-la."
+        ))
+
+        return(NULL)
+      }
+
+      if (-1 %in% state$added_school_selected) {
+        showModal(modalDialog(
+          size = "s",
+          easyClose = TRUE,
+          "Selecione ao menos uma escola para editá-la."
+        ))
+
+        return(NULL)
+      }
+
+      showModal(modalDialog(
+        size = "s",
+        easyClose = TRUE,
+        sprintf("Confirma a exclusão de %s escola(s) selecionada(s)?", length(state$added_school_selected)),
+        footer = tagList(
+          modalButton("Cancelar"),
+          actionButton(ns("btn_delete_school_confirm"), "Confirmar")
+        )
+      ))
+    })
+
+    observeEvent(input$btn_delete_school_confirm, {
+      state$school_add <- remove_escolas(state$db_con, state$added_school_selected)
+      state$added_school_selected <- c()
+
+      removeModal()
+    })
+
+
+# edit school -------------------------------------------------------------
+
+
+    observeEvent(input$btn_edit_school, {
+
+      if (is.null(state$added_school_selected)) {
+        showModal(modalDialog(
+          size = "s",
+          easyClose = TRUE,
+          "Selecione uma escola para editá-la."
+        ))
+
+        return(NULL)
+      }
+
+      if (-1 %in% state$added_school_selected) {
+        showModal(modalDialog(
+          size = "s",
+          easyClose = TRUE,
+          "Selecione uma escola para editá-la."
+        ))
+
+        return(NULL)
+      }
+
+      if (length(state$added_school_selected) > 1) {
+        showModal(modalDialog(
+          size = "s",
+          easyClose = TRUE,
+          "Selecione apenas uma escola para editá-la."
+        ))
+
+        return(NULL)
+      }
+
+      school_to_edit <- state$school_add |>
+        dplyr::filter(co_entidade %in% state$added_school_selected)
+
+      state$add_school = list(
+        co_entidade = school_to_edit$co_entidade[1],
+        no_entidade = school_to_edit$no_entidade[1],
+        cd_setor = school_to_edit$cd_setor[1],
+        nr_distrito = school_to_edit$nr_distrito[1],
+        nm_distrito = school_to_edit$nm_distrito[1],
+        cd_dre = school_to_edit$cd_dre[1],
+        nm_dre = school_to_edit$nm_dre[1],
+        id_hex = school_to_edit$id_hex[1],
+        lat = school_to_edit$lat[1],
+        lon = school_to_edit$lon[1],
+
+        qt_mat_inf_cre = school_to_edit$qt_mat_inf_cre[1],
+        qt_mat_inf_pre = school_to_edit$qt_mat_inf_pre[1],
+        qt_mat_fund_ai = school_to_edit$qt_mat_fund_ai[1],
+        qt_mat_fund_af = school_to_edit$qt_mat_fund_af[1],
+
+        tmi_metro = school_to_edit$tmi_metro[1]
+      )
+
+      state$new_school = state$new_school + 1
+
+      showModal(modalDialog(
+        size = "m",
+        easyClose = TRUE,
+        mod_sim_add_school_ui("sim_add_school"),
+        footer = tagList(
+          modalButton("Cancelar"),
+          actionButton(ns("btn_edit_school_confirm"), "Salvar")
+        )
+      ))
+    })
+
+    observeEvent(input$btn_edit_school_confirm, {
+
+      nova_escola <- data.frame(
+        co_entidade = state$add_school$co_entidade,
+        no_entidade = state$add_school$no_entidade,
+        tp_categoria = "Municipal",
+        # ds_endereco = "",
+        cd_setor = state$add_school$cd_setor,
+        nr_distrito = state$add_school$nr_distrito,
+        nm_distrito = state$add_school$nm_distrito,
+        cd_dre = state$add_school$cd_dre,
+        nm_dre = state$add_school$nm_dre,
+        id_hex = state$add_school$id_hex,
+        lat = state$add_school$lat,
+        lon = state$add_school$lon,
+
+        qt_mat_inf_cre = state$add_school$qt_mat_inf_cre,
+        qt_mat_inf_pre = state$add_school$qt_mat_inf_pre,
+        qt_mat_fund_ai = state$add_school$qt_mat_fund_ai,
+        qt_mat_fund_af = state$add_school$qt_mat_fund_af,
+
+        tmi_metro = state$add_school$tmi_metro
+      ) |>
+        # converte nome da escola para maiúsculas, para combinar com informações do censo escolar
+        dplyr::mutate(no_entidade = toupper(no_entidade))
+
+      state$school_add <- edita_escola(state$db_con, nova_escola)
+      state$add_school = list()
+
+      removeModal()
+    })
 
 # Load previous scenario --------------------------------------------------
 

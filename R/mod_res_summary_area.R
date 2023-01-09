@@ -66,10 +66,20 @@ mod_res_summary_area_server <- function(id, state){
     ns <- session$ns
 
     school_mod <- reactive({
-      req(state$scenario_selected != -1)
+      req(state$scenario_selected)
 
       # browser()
-      mod_df <- novo_escolas_mod_vazio()
+
+      mod_df <- data.frame(nm_dre = character(),
+                           nm_distrito = character(),
+                           cd_setor = character(),
+                           no_entidade = character()
+      )
+      add_df <- data.frame(nm_dre = character(),
+                           nm_distrito = character(),
+                           cd_setor = character(),
+                           no_entidade = character()
+      )
 
       if (DBI::dbExistsTable(state$db_con, "modificacoes")) {
         mod_df <- DBI::dbGetQuery(state$db_con,
@@ -84,7 +94,37 @@ mod_res_summary_area_server <- function(id, state){
           dplyr::arrange(nm_dre, nm_distrito, cd_setor, no_entidade)
       }
 
-      return(mod_df)
+      if (DBI::dbExistsTable(state$db_con, "adicoes")) {
+        add_df <- DBI::dbGetQuery(state$db_con,
+                                  sprintf("SELECT * FROM adicoes WHERE id_cenario = %d",
+                                          state$scenario_selected)
+        )
+
+        add_df <- add_df |>  #dplyr::left_join(add_df, escolas, by = c("co_entidade", "no_entidade")) |>
+          dplyr::mutate(orig_mat_creche = 0, orig_mat_pre = 0,
+                        orig_mat_fund_ai = 0, orig_mat_fund_af = 0) |>
+          dplyr::select(nm_dre, nm_distrito, cd_setor, id_hex, co_entidade, no_entidade, tp_categoria, tmi_metro,
+                        orig_mat_creche, nova_mat_creche = qt_mat_inf_cre,
+                        orig_mat_pre, nova_mat_pre = qt_mat_inf_pre,
+                        orig_mat_fund_ai, nova_mat_fund_ai = qt_mat_fund_ai,
+                        orig_mat_fund_af, nova_mat_fund_af = qt_mat_fund_af) |>
+          dplyr::mutate(tp_categoria = "Adicional") |>
+          dplyr::arrange(nm_dre, nm_distrito, cd_setor, no_entidade)
+      }
+
+      if((nrow(mod_df) > 0) & (nrow(add_df) > 0)) {
+        return(rbind(mod_df, add_df))
+      }
+
+      if((nrow(mod_df) > 0)) {
+        return(mod_df)
+      }
+
+      if((nrow(add_df) > 0)) {
+        return(add_df)
+      }
+
+      return(mod_df) # dataset vazio, apenas com nomes das colunas
     })
 
     hex_mod <- reactive({
@@ -222,8 +262,15 @@ mod_res_summary_area_server <- function(id, state){
 
     # Modifications by area --------------------------------------------------------
 
-    footer_total <- function(values) format(sum(values, na.rm = TRUE),
-                                            big.mark = ".", decimal.mark = ",")
+    footer_total <- reactable::JS(
+      "function(column, state) {
+          let total = 0
+          state.sortedData.forEach(function(row) {
+            total += row[column.id]
+          })
+          return total.toLocaleString(2)
+        }"
+    )
 
     output$table_mod <- reactable::renderReactable({
       req(nrow(sector_mod()) > 0, state$window_height)
@@ -410,7 +457,9 @@ mod_res_summary_area_server <- function(id, state){
       handlerExpr = {
         req(map_shape(), map_data())
 
-        data_sf <- dplyr::left_join(map_shape(), map_data()) |>
+        # browser()
+
+        data_sf <- dplyr::left_join(map_shape(), map_data(), by = "cd_setor") |>
           dplyr::mutate(valor = highlight_var)
 
         # create legend

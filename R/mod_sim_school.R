@@ -31,8 +31,15 @@ mod_sim_school_server <- function(id, state){
     })
 
     # Headline ----------------------------------------------------------------
-    footer_total <- function(values) format(sum(values, na.rm = TRUE),
-                                            big.mark = ".", decimal.mark = ",")
+    footer_total <- reactable::JS(
+      "function(column, state) {
+          let total = 0
+          state.sortedData.forEach(function(row) {
+            total += row[column.id]
+          })
+          return total.toLocaleString(2)
+        }"
+    )
 
     output$school_details <- renderUI({
       req(state$school_selected)

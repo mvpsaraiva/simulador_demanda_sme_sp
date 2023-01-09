@@ -40,6 +40,7 @@ app_ui <- function(request) {
     navbarPage(
       title = "demanda.sme.sp",
       collapsible = TRUE,
+      shinyjs::useShinyjs(),
       # tabPanel(
       #   title = "Estudantes",
       #   mod_estudantes_ui("estudantes_1")
