@@ -33,6 +33,12 @@ carrega_novas_escolas <- function(connection) {
     DBI::dbWriteTable(connection, name = "novas_escolas", value = novas_escolas)
   }
 
+  if (!DBI::dbExistsTable(connection, "adicoes")) {
+    adicoes <- escolas[NULL, ]
+
+    DBI::dbWriteTable(connection, name = "adicoes", value = adicoes)
+  }
+
   novas_escolas <- DBI::dbReadTable(connection, "novas_escolas") |>
     # algumas escolas foram salvas com id hex maiusculo... corrigir
     dplyr::mutate(id_hex = tolower(id_hex))
