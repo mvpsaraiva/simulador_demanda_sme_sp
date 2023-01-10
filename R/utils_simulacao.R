@@ -37,6 +37,15 @@ carrega_novas_escolas <- function(connection) {
     adicoes <- escolas[NULL, ]
 
     DBI::dbWriteTable(connection, name = "adicoes", value = adicoes)
+  } else {
+    fields <- DBI::dbListFields(connection, name = "adicoes")
+
+    if (!("id_cenario" %in% fields)) {
+      adicoes <- escolas[NULL, ]
+      adicoes$id_cenario <- NA_integer_
+
+      DBI::dbWriteTable(connection, name = "adicoes", value = adicoes, overwrite = TRUE)
+    }
   }
 
   novas_escolas <- DBI::dbReadTable(connection, "novas_escolas") |>
