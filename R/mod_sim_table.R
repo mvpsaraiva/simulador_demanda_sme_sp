@@ -643,7 +643,7 @@ mod_sim_table_server <- function(id, state){
         modalDialog(
           title = "Escolha um cenário",
           size = "l",
-          mod_res_selector_ui("res_selector_load"),
+          mod_res_selector_ui("res_selector_load", w = "400px"),
           footer = tagList(
             modalButton("Cancelar"),
             actionButton(ns("btn_load"), "Carregar")
@@ -670,6 +670,15 @@ mod_sim_table_server <- function(id, state){
         dplyr::filter(!(co_entidade %in% modificacoes$co_entidade))
 
       state$school_mod <- rbind(state$school_mod, modificacoes)
+
+      # carregar escolas adicionadas do cenário selecionado
+      adicoes <- DBI::dbGetQuery(state$db_con,
+                                      sprintf("SELECT * FROM adicoes WHERE id_cenario = %d", id_cenario))
+
+      state$add_school = adicoes$co_entidade |> unlist()
+      indices <- match(adicoes$co_entidade, state$school_add$co_entidade)
+
+      reactable::updateReactable(ns("table_added_schools"), selected = indices)
 
       removeModal()
 

@@ -7,10 +7,10 @@
 #' @noRd
 #'
 #' @importFrom shiny NS tagList
-mod_res_selector_ui <- function(id){
+mod_res_selector_ui <- function(id, w = "100%"){
   ns <- NS(id)
   tagList(
-    reactable::reactableOutput(ns("table_scenarios"), width = "100%", height = "100%")
+    reactable::reactableOutput(ns("table_scenarios"), width = w, height = "100%")
   )
 }
 

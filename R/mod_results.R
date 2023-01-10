@@ -102,6 +102,33 @@ mod_results_server <- function(id, state){
                         orig_mat_fund_ai, add_mat_fund_ai, nova_mat_fund_ai,
                         orig_mat_fund_af, add_mat_fund_af, nova_mat_fund_af)
 
+        adicoes <- DBI::dbGetQuery(state$db_con,
+                                        sprintf("SELECT * FROM adicoes WHERE id_cenario = %d", id_cenario)) |>
+          dplyr::mutate(tp_categoria = "Adicional",
+                        orig_mat_creche = 0,
+                        nova_mat_creche = qt_mat_inf_cre,
+                        add_mat_creche = qt_mat_inf_cre,
+
+                        orig_mat_pre = 0,
+                        nova_mat_pre = qt_mat_inf_pre,
+                        add_mat_pre = qt_mat_inf_pre,
+
+                        orig_mat_fund_ai = 0,
+                        nova_mat_fund_ai = qt_mat_fund_ai,
+                        add_mat_fund_ai = qt_mat_fund_ai,
+
+                        orig_mat_fund_af = 0,
+                        nova_mat_fund_af = qt_mat_fund_af,
+                        add_mat_fund_af = qt_mat_fund_af) |>
+          dplyr::select(co_entidade, no_entidade, tp_categoria,
+                        cd_dre, nm_dre, nr_distrito, nm_distrito, cd_setor,
+                        orig_mat_creche, add_mat_creche, nova_mat_creche,
+                        orig_mat_pre, add_mat_pre, nova_mat_pre,
+                        orig_mat_fund_ai, add_mat_fund_ai, nova_mat_fund_ai,
+                        orig_mat_fund_af, add_mat_fund_af, nova_mat_fund_af)
+
+        modificacoes <- rbind(modificacoes, adicoes)
+
         # Carrega déficit por hex simulado
         deficit_por_hex <- DBI::dbGetQuery(state$db_con,
                                            sprintf("SELECT * FROM deficit_por_hex WHERE id_cenario = %d AND cutoff = 15", id_cenario)) |>
