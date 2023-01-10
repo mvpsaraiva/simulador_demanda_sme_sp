@@ -41,10 +41,14 @@ carrega_novas_escolas <- function(connection) {
     fields <- DBI::dbListFields(connection, name = "adicoes")
 
     if (!("id_cenario" %in% fields)) {
-      adicoes <- escolas[NULL, ]
-      adicoes$id_cenario <- NA_integer_
 
-      DBI::dbWriteTable(connection, name = "adicoes", value = adicoes, overwrite = TRUE)
+      DBI::dbSendStatement(connection, statement = "alter table adicoes add id_cenario integer")
+      # adicoes <- escolas[NULL, ]
+      # adicoes$id_cenario <- NA_integer_
+      #
+      # cbind(data.frame(id_cenario = NA_integer_)[NULL, ], adicoes)
+      #
+      # DBI::dbWriteTable(connection, name = "adicoes", value = adicoes, overwrite = TRUE)
     }
   }
 
