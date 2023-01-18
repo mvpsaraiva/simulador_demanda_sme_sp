@@ -20,50 +20,24 @@ app_ui <- function(request) {
       type = 'text/css',
       '.modal-dialog { width: fit-content !important; }'
     ),
-    # Your application UI logic
-  #   gridlayout::grid_page(
-  #     layout = c("     1fr     ",
-  #                "85px header  ",
-  #                "1fr  content "
-  #                ),
-  #     gridlayout::grid_card(
-  #       "header",
-  #       mod_main_header_ui("main_header")
-  #     ),
-  #     gridlayout::grid_place(
-  #       "content",
-  #       # mod_main_content_ui("main_content")
-  #       mod_sim_config_ui("sim_config")
-  #     )
-  #   )
-  # )
     navbarPage(
       title = "demanda.sme.sp",
       collapsible = TRUE,
       shinyjs::useShinyjs(),
-      # tabPanel(
-      #   title = "Estudantes",
-      #   mod_estudantes_ui("estudantes_1")
-      # ),
-      # tabPanel(
-      #   title = "Matrículas",
-      #   mod_matriculas_ui("matriculas_1")
-      #   ),
-      # tabPanel(
-      #   title = "Déficit",
-      #   mod_deficit_ui("deficit_1")
-      # ),
       tabPanel(
         title = "Simulação",
         style = "margin: 0; padding: 0; height: 100vh",
         mod_simulation_ui("simulation"),
-      ),
+      )
+      ,
       tabPanel(
         title = "Resultados",
         style = "margin: 0; padding: 0; height: 100vh",
         mod_results_ui("results")
       )
-    ))
+    )
+
+  )
 }
 
 

@@ -16,13 +16,13 @@ Imports:
     config (>= 0.3.1),
     DBI,
     dplyr,
-    DT,
     glue,
     golem (>= 0.3.5),
     gridlayout,
-    htmltools,
+    h3jsr,
     janitor,
     jsonlite,
+    keyring,
     mapdeck,
     openxlsx,
     piggyback,
@@ -31,10 +31,11 @@ Imports:
     RSQLite,
     sf,
     shiny (>= 1.6.0),
+    shinyjs,
+    shinymanager,
     shinyWidgets,
     stringr,
-    tidyr,
-    uuid
+    tidyr
 Suggests: 
     spelling,
     testthat (>= 3.0.0)
@@ -42,4 +43,4 @@ Config/testthat/edition: 3
 Encoding: UTF-8
 Language: en-US
 LazyData: true
-RoxygenNote: 7.2.1
+RoxygenNote: 7.2.3

@@ -245,6 +245,8 @@ mod_sim_map_server <- function(id, state){
 
     # Shape data --------------------------------------------------------------
     map_shape <- reactive({
+      req(input$unidade_espacial)
+
       sf_shape <- NULL
       if (input$unidade_espacial == "hexgrid") {
         sf_shape <- dplyr::left_join(hexgrid, hexgrid_setor_lookup, by = "id_hex") |>
@@ -285,6 +287,8 @@ mod_sim_map_server <- function(id, state){
     })
 
     map_data <- reactive({
+      req(input$mapa_variavel, input$unidade_espacial)
+
       if (input$mapa_variavel == "demanda") {
         demanda <- populacao_por_hex |>
           dplyr::filter(serie %in% input$mapa_etapa, ano == req(input$mapa_ano)) |>
@@ -350,19 +354,24 @@ mod_sim_map_server <- function(id, state){
     school_data <- reactive({
       # req(state$state$id)
 
+      # req(input$mapa_exibir_escolas)
+
       # Todas as escolas
       d <- escolas |>
         dplyr::filter(tp_categoria %in% input$mapa_exibir_escolas)
 
-
       # Filtrar DRE ou Distrito
-      if (length(state$selected_dres) > 0) {
-        d <- d |>
-          dplyr::filter(nm_dre %in% state$selected_dres)
+      if (!is.null(state$selected_dres)) {
+        if (length(state$selected_dres) > 0) {
+          d <- d |>
+            dplyr::filter(nm_dre %in% state$selected_dres)
+        }
       }
-      if (length(state$selected_districts) > 0) {
-        d <- d |>
-          dplyr::filter(nm_distrito %in% state$selected_districts)
+      if (!is.null(state$selected_districts)) {
+        if (length(state$selected_districts) > 0) {
+          d <- d |>
+            dplyr::filter(nm_distrito %in% state$selected_districts)
+        }
       }
 
       d <- d |>
@@ -384,26 +393,35 @@ mod_sim_map_server <- function(id, state){
     })
 
     added_school_data <- reactive({
-      # req(state$state$id)
+      # req(state$selected_dres, state$selected_districts)
 
+      # browser()
       # Todas as escolas
       d <- state$school_add
 
       # Filtrar DRE ou Distrito
-      if (length(state$selected_dres) > 0) {
-        d <- d |>
-          dplyr::filter(nm_dre %in% state$selected_dres)
+      if (!is.null(state$selected_dres)) {
+        if (length(state$selected_dres) > 0) {
+          d <- d |>
+            dplyr::filter(nm_dre %in% state$selected_dres)
+        }
       }
-      if (length(state$selected_districts) > 0) {
-        d <- d |>
-          dplyr::filter(nm_distrito %in% state$selected_districts)
+      if (!is.null(state$selected_districts)) {
+        if (length(state$selected_districts) > 0) {
+          d <- d |>
+            dplyr::filter(nm_distrito %in% state$selected_districts)
+        }
       }
 
       # identificar escolas selecionadas na tabela
-      d <- d |>
-        dplyr::mutate(ativa = dplyr::if_else(co_entidade %in% state$added_school_selected, "sim", "nao"),
-                      color = dplyr::if_else(co_entidade %in% state$added_school_selected, "#FF00FFFF", "#ddddddFF"))
-          # co_entidade %in% state$added_school_selected)
+      if (is.null(state$added_school_selected)) {
+        d <- d |> dplyr::mutate(ativa = "nao", color = "#ddddddFF")
+      } else {
+        d <- d |>
+          dplyr::mutate(ativa = dplyr::if_else(co_entidade %in% state$added_school_selected, "sim", "nao"),
+                        color = dplyr::if_else(co_entidade %in% state$added_school_selected, "#FF00FFFF", "#ddddddFF"))
+      }
+
 
 
       d <- d |>
@@ -421,6 +439,8 @@ mod_sim_map_server <- function(id, state){
     })
 
     metro_data <- reactive({
+      # req(input$mapa_exibir_metro)
+
       d <- metro
 
       d <- metro |>
@@ -507,11 +527,6 @@ mod_sim_map_server <- function(id, state){
           alpha = 200,
           palette = l_palette
         )
-
-
-        # if (input$mapa_variavel == "resultado") {
-        #   l$colours <- l$colours[2:(length(l$colours)-1)]
-        # }
 
         legend_title = switch (
           input$mapa_variavel,
@@ -610,6 +625,8 @@ mod_sim_map_server <- function(id, state){
         added_school_data()
       },
       handlerExpr = {
+        req(input$mapa_exibir_escolas_adicionais)
+
         mapdeck::mapdeck_update(map_id = ns("map")) |>
           mapdeck::clear_pointcloud(layer_id = "new_schools")
 
@@ -685,6 +702,7 @@ mod_sim_map_server <- function(id, state){
     )
 
     observeEvent({input$map_polygon_click}, {
+      req(input$map_polygon_click)
       # lst <- jsonlite::fromJSON( js )
 
       # browser()

@@ -64,6 +64,13 @@ app_server <- function(input, output, session) {
     db_con = con
   )
 
+  res_auth <- shinymanager::secure_server(
+    check_credentials = shinymanager::check_credentials(
+      "data/users.sqlite",
+      passphrase = keyring::key_get("R-shinymanager-key", "tassadar")
+    )
+  )
+
   # update the app state when browser window is re-sized
   observeEvent(input$window_size, app_state$window_height <- input$window_size$height)
 
@@ -84,5 +91,4 @@ app_server <- function(input, output, session) {
   mod_res_summary_server("res_summary", app_state)
   mod_res_summary_area_server("res_summary_area", app_state)
   mod_res_deficit_setor_server("res_deficit_setor", app_state)
-  mod_res_deficit_distrito_server("res_deficit_distrito", app_state)
 }

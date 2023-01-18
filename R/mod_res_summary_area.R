@@ -322,6 +322,8 @@ mod_res_summary_area_server <- function(id, state){
 
     # Shape data --------------------------------------------------------------
     map_shape <- reactive({
+      req(input$unidade_espacial)
+
       sf_shape <- NULL
       if (input$unidade_espacial == "hexgrid") {
         sf_shape <- dplyr::left_join(hexgrid, hexgrid_setor_lookup, by = "id_hex") |>
@@ -333,15 +335,7 @@ mod_res_summary_area_server <- function(id, state){
       sf_shape <- sf_shape |>
         dplyr::mutate(popup = glue::glue("<div><b>DRE: </b>{nm_dre}</div> <div><b>Distrito: </b>{nm_distrito}</div> <div><b>Setor: </b>{cd_setor}</div>"))
 
-      if (length(input$filtro_dre) == 0 & length(input$filtro_distrito) == 0) {
-        return(sf_shape)
-      } else {
-        if (length(input$filtro_dre) > 0) {
-          return(dplyr::filter(sf_shape, nm_dre %in% input$filtro_dre))
-        } else {
-          return(dplyr::filter(sf_shape, nm_distrito %in% input$filtro_distrito))
-        }
-      }
+      return(sf_shape)
     })
 
     map_data <- reactive({
