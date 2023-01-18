@@ -64,6 +64,8 @@ app_server <- function(input, output, session) {
     db_con = con
   )
 
+  keyring::keyring_unlock(password = "frentepopulardajudeia")
+
   res_auth <- shinymanager::secure_server(
     check_credentials = shinymanager::check_credentials(
       "data/users.sqlite",
