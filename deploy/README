@@ -1,0 +1,4 @@
+docker build -f Dockerfile_base --progress=plain -t demanda.sme.sp_base .
+docker build -f Dockerfile --progress=plain -t demanda.sme.sp:latest .
+docker run -p 80:80 demanda.sme.sp:latest
+# then go to 127.0.0.1:80

@@ -1,0 +1,7 @@
+FROM rocker/verse:4.3.1
+RUN apt-get update -y && apt-get install -y  libicu-dev make pandoc  libicu-dev zlib1g-dev make pandoc  libnode-dev libcurl4-openssl-dev libssl-dev  libicu-dev make zlib1g-dev pandoc  make  libcurl4-openssl-dev libssl-dev  zlib1g-dev  git libssl-dev libcurl4-openssl-dev  git  make zlib1g-dev  make libicu-dev libnode-dev libudunits2-dev libssl-dev libgdal-dev gdal-bin libgeos-dev libproj-dev libsqlite3-dev libcurl4-openssl-dev  libssl-dev libcurl4-openssl-dev  libicu-dev  libsodium-dev libsecret-1-dev libssl-dev  pandoc  make libicu-dev zlib1g-dev pandoc  libssl-dev  git libssl-dev make libcurl4-openssl-dev  libudunits2-dev libssl-dev libgdal-dev gdal-bin libgeos-dev libproj-dev libsqlite3-dev  libicu-dev libssl-dev make zlib1g-dev pandoc  libsodium-dev  libudunits2-dev && rm -rf /var/lib/apt/lists/*
+RUN mkdir -p /usr/local/lib/R/etc/ /usr/lib/R/etc/
+RUN echo "options(renv.config.pak.enabled = TRUE, repos = c(CRAN = 'https://cran.rstudio.com/'), download.file.method = 'libcurl', Ncpus = 4)" | tee /usr/local/lib/R/etc/Rprofile.site | tee /usr/lib/R/etc/Rprofile.site
+RUN R -e 'install.packages(c("renv","remotes"))'
+COPY renv.lock.prod renv.lock
+RUN R -e 'renv::restore()'
