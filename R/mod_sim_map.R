@@ -9,12 +9,13 @@
 #' @importFrom shiny NS tagList
 mod_sim_map_ui <- function(id){
   ns <- NS(id)
+
   tagList(
 
     tabsetPanel(
       id = ns("tab_sim_map"),
       tabPanel(title = "Mapa",
-               mapdeck::mapdeckOutput(ns("map"), height = "100%")
+                 mapdeck::mapdeckOutput(ns("map"), height = "90vh")
       ),
       tabPanel(title = "Configurações",
                style = "margin: 5px; padding: 5px;",

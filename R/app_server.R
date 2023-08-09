@@ -64,14 +64,14 @@ app_server <- function(input, output, session) {
     db_con = con
   )
 
-  keyring::keyring_unlock(password = "frentepopulardajudeia")
+  # keyring::keyring_unlock(password = "frentepopulardajudeia")
 
-  res_auth <- shinymanager::secure_server(
-    check_credentials = shinymanager::check_credentials(
-      "data/users.sqlite",
-      passphrase = keyring::key_get("R-shinymanager-key", "tassadar")
-    )
-  )
+  # res_auth <- shinymanager::secure_server(
+  #   check_credentials = shinymanager::check_credentials(
+  #     "data/users.sqlite",
+  #     passphrase = keyring::key_get("R-shinymanager-key", "tassadar")
+  #   )
+  # )
 
   # update the app state when browser window is re-sized
   observeEvent(input$window_size, app_state$window_height <- input$window_size$height)
