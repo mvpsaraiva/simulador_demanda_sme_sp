@@ -22,7 +22,6 @@ Imports:
     h3jsr,
     janitor,
     jsonlite,
-    keyring,
     mapdeck,
     openxlsx,
     piggyback,
@@ -32,7 +31,6 @@ Imports:
     sf,
     shiny (>= 1.6.0),
     shinyjs,
-    shinymanager,
     shinyWidgets,
     stringr,
     tidyr
