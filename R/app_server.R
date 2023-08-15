@@ -37,13 +37,25 @@ app_server <- function(input, output, session) {
     selected_dres = NULL,
     selected_districts = NULL,
     state = list(id = app_states$STATE_NOTHING_SELECTED, store = list()),
+    config = list(selected_dres = NULL,
+                  selected_districts = NULL,
+                  map_shape = NULL,
+                  map_data = NULL,
+                  unidade_espacial = "setores_sme",
+                  mapa_variavel = "demanda",
+                  mapa_etapa = c("creche", "pre", "anos_iniciais", "anos_finais"),
+                  mapa_rede = "publica",
+                  mapa_ano = 2035,
+                  anos = c(2020, 2035),
+                  mapa_exibir_escolas = FALSE
+                  ),
 
     centroid = c(-46.64806, -23.64986), # c(-46.63306176720343, -23.548164364465265),
 
     school_selected = -1,
     edit_school = list(),
 
-    scenario_selected = -1,
+    scenario_selected = NA_integer_,
     edit_scenario = list(
       name = "",
       author = "",
@@ -77,6 +89,12 @@ app_server <- function(input, output, session) {
   observeEvent(input$window_size, app_state$window_height <- input$window_size$height)
 
   # Your application server logic
+
+  # Diagnostics
+  mod_diagnostics_server("diagnostics", app_state)
+  mod_diag_config_server("diag_config", app_state)
+  mod_diag_map_server("diag_map_present", app_state, 1)
+  mod_diag_map_server("diag_map_future", app_state, 2)
 
   # Simulation
   mod_simulation_server("simulation", app_state)

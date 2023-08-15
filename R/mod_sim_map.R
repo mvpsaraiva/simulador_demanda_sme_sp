@@ -613,7 +613,6 @@ mod_sim_map_server <- function(id, state){
               palette = NULL,
 
               legend = js_legend
-
             )
         }
 
