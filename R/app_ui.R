@@ -24,12 +24,12 @@ app_ui <- function(request) {
       title = "demanda.sme.sp",
       collapsible = TRUE,
       shinyjs::useShinyjs(),
-      tabPanel(
-        title = "Início",
-        style = "margin: 0; padding: 0; height: 100vh",
-        h3("Início")
-        # mod_simulation_ui("simulation"),
-      ),
+      # tabPanel(
+      #   title = "Início",
+      #   style = "margin: 0; padding: 0; height: 100vh",
+      #   h3("Início")
+      #   # mod_simulation_ui("simulation"),
+      # ),
       tabPanel(
         title = "Diagnóstico",
         style = "margin: 0; padding: 0; height: 100vh",
@@ -45,12 +45,12 @@ app_ui <- function(request) {
         style = "margin: 0; padding: 0; height: 100vh",
         mod_results_ui("results")
       ),
-      tabPanel(
-        title = "Documentação",
-        style = "margin: 0; padding: 0; height: 100vh",
-        h3("Documentação")
-        # mod_results_ui("results")
-      )
+      # tabPanel(
+      #   title = "Documentação",
+      #   style = "margin: 0; padding: 0; height: 100vh",
+      #   h3("Documentação")
+      #   # mod_results_ui("results")
+      # )
     )
 
   )

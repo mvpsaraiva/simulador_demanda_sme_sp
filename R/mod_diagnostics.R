@@ -40,7 +40,7 @@ mod_diagnostics_ui <- function(id){
         area = "download",
         div(
           style = "margin: auto; padding: auto; height: 100%; display: flex; justify-content: center; align-items: center;",
-          actionButton(ns("btn_download_diagnostics"), "Exportar Resultados")
+          downloadButton(ns("btn_download_diagnostics"), "Exportar Resultados")
         )
       )
     )
@@ -54,6 +54,16 @@ mod_diagnostics_ui <- function(id){
 mod_diagnostics_server <- function(id, state){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
+
+    output$btn_download_diagnostics <- downloadHandler(
+      filename = function() {
+        xls_file <- paste0("diagnostico_demanda.xlsx")
+      },
+
+      content = function(file) {
+        file.copy("data/diagnostico.xlsx", file)
+      })
+
 
   })
 }

@@ -11,9 +11,12 @@ mod_sim_table_ui <- function(id){
   ns <- NS(id)
 
   tabsetPanel(
-    id = ns("tab_sim_map"),
+    id = ns("tab_sim_table"),
     tabPanel(title = "Escolas",
-             reactable::reactableOutput(ns("table_schools"), width = "100%", height = "100%")
+             div(
+               style = "margins: 5px; padding: 5px;",
+               reactable::reactableOutput(ns("table_schools"), width = "100%", height = "100%")
+             )
     ),
     tabPanel(title = "Escolas Adicionadas",
              div(

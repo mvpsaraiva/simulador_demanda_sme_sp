@@ -11,7 +11,7 @@ mod_simulation_ui <- function(id){
   ns <- NS(id)
     tagList(
       gridlayout::grid_container(
-        layout = c("      1fr    1fr  350px    ",
+        layout = c("      1fr    1fr  480px    ",
                    "1fr   table  map  details",
                    "75px  table  map  run    "
         ),
